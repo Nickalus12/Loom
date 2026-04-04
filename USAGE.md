@@ -1,6 +1,6 @@
-# Maestro Usage Guide
+﻿# Loom Usage Guide
 
-Comprehensive guide to installing, configuring, and using the Maestro multi-agent orchestration platform. Maestro runs on both **Gemini CLI** (extension) and **Claude Code** (plugin). This guide covers both runtimes — platform-specific differences are noted where applicable.
+Comprehensive guide to installing, configuring, and using the Loom multi-agent orchestration platform. Loom runs on both **Gemini CLI** (extension) and **Claude Code** (plugin). This guide covers both runtimes â€” platform-specific differences are noted where applicable.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ Comprehensive guide to installing, configuring, and using the Maestro multi-agen
 
 ### Required Software
 
-1. **Gemini CLI** or **Claude Code**: Maestro runs on either platform.
+1. **Gemini CLI** or **Claude Code**: Loom runs on either platform.
    - Gemini CLI: Install from [https://github.com/google-gemini/gemini-cli](https://github.com/google-gemini/gemini-cli)
    - Claude Code: Install from [https://docs.anthropic.com/en/docs/claude-code](https://docs.anthropic.com/en/docs/claude-code)
 
@@ -30,7 +30,7 @@ Comprehensive guide to installing, configuring, and using the Maestro multi-agen
 
 ### Enable Experimental Subagents (Gemini CLI Only)
 
-Maestro on Gemini CLI requires the experimental subagent system. Claude Code users can skip this section — subagents are available by default.
+Loom on Gemini CLI requires the experimental subagent system. Claude Code users can skip this section â€” subagents are available by default.
 
 Enable it in your Gemini CLI settings file:
 
@@ -51,14 +51,14 @@ If the file does not exist, create it with the content above. If it exists, add 
 
 **Important**: Native parallel subagents currently run in autonomous mode. Sequential delegation uses your current Gemini CLI approval mode. Review the [Gemini CLI subagents documentation](https://geminicli.com/docs/core/subagents/) for full details.
 
-Maestro does not auto-edit `~/.gemini/settings.json`; enable `experimental.enableAgents` manually before orchestration.
+Loom does not auto-edit `~/.gemini/settings.json`; enable `experimental.enableAgents` manually before orchestration.
 
 ## Installation
 
 ### Gemini CLI
 
 ```bash
-gemini extensions install https://github.com/josstei/maestro-orchestrate
+gemini extensions install https://github.com/Nickalus12/loom-orchestrate
 ```
 
 This downloads the extension and registers it automatically.
@@ -66,8 +66,8 @@ This downloads the extension and registers it automatically.
 ### Claude Code
 
 ```bash
-git clone https://github.com/josstei/maestro-orchestrate
-claude --plugin-dir /path/to/maestro-orchestrate/claude
+git clone https://github.com/Nickalus12/loom-orchestrate
+claude --plugin-dir /path/to/loom-orchestrate/claude
 ```
 
 The `--plugin-dir` flag loads the plugin for a single session. The Claude Code plugin lives in the `claude/` subdirectory (not the repo root). See `claude/README.md` for detailed Claude Code setup instructions.
@@ -75,8 +75,8 @@ The `--plugin-dir` flag loads the plugin for a single session. The Claude Code p
 ### Local Development
 
 ```bash
-git clone https://github.com/josstei/maestro-orchestrate
-cd maestro-orchestrate
+git clone https://github.com/Nickalus12/loom-orchestrate
+cd loom-orchestrate
 gemini extensions link .
 ```
 
@@ -90,45 +90,45 @@ Restart Gemini CLI after installation, then confirm the extension loaded:
 gemini extensions list
 ```
 
-You should see `maestro` in the list of active extensions.
+You should see `loom` in the list of active extensions.
 
 
 ## Quick Start
 
-Path examples in this guide use the default `MAESTRO_STATE_DIR=docs/maestro` unless noted otherwise.
+Path examples in this guide use the default `LOOM_STATE_DIR=docs/loom` unless noted otherwise.
 
 This walkthrough demonstrates a complete orchestration from start to finish.
 
 Start a full orchestration by describing what you want to build:
 
 ```
-/maestro:orchestrate Build a REST API for a task management system with user authentication
+/loom:orchestrate Build a REST API for a task management system with user authentication
 ```
 
-Maestro will walk you through the complete lifecycle:
+Loom will walk you through the complete lifecycle:
 
-1. **Design Dialogue** -- Maestro asks structured questions one at a time (problem scope, constraints, technology preferences, quality requirements, deployment context) and presents 2-3 architectural approaches with trade-offs.
+1. **Design Dialogue** -- Loom asks structured questions one at a time (problem scope, constraints, technology preferences, quality requirements, deployment context) and presents 2-3 architectural approaches with trade-offs.
 2. **Design Review** -- The design document is presented section by section for your approval. Each section is 200-300 words covering requirements, architecture, component specs, team composition, risk assessment, and success criteria.
-3. **Implementation Planning** -- Maestro generates a detailed plan with phase breakdown, agent assignments, dependency graph, parallel execution opportunities, and validation criteria. You review and approve before execution begins.
+3. **Implementation Planning** -- Loom generates a detailed plan with phase breakdown, agent assignments, dependency graph, parallel execution opportunities, and validation criteria. You review and approve before execution begins.
 4. **Execution Mode Selection** -- Choose parallel dispatch (independent phases run concurrently as native subagents) or sequential delegation (one phase at a time with intervention opportunities).
 5. **Phase-by-Phase Execution** -- Specialized agents implement the plan. Session state is updated after each phase with files changed, validation results, and token usage.
 6. **Quality Gate** -- A final code review blocks completion on unresolved Critical or Major findings. The orchestrator remediates and re-validates until resolved.
-7. **Completion & Archival** -- Maestro delivers a summary of files changed, token usage by agent, deviations from plan, and recommended next steps. The session is archived automatically.
+7. **Completion & Archival** -- Loom delivers a summary of files changed, token usage by agent, deviations from plan, and recommended next steps. The session is archived automatically.
 
 
 ### Express Mode Example
 
-For simple tasks, Maestro detects low complexity and uses the Express workflow:
+For simple tasks, Loom detects low complexity and uses the Express workflow:
 
 ```
-/maestro:orchestrate Add a health check endpoint to the Express server
+/loom:orchestrate Add a health check endpoint to the Express server
 ```
 
 Express mode follows a streamlined flow:
 
-1. **Complexity classification**: Maestro determines the task is `simple` and selects Express workflow
-2. **Clarifying questions** (1-2 turns): Maestro asks focused questions about problem scope only
-3. **Structured brief**: Maestro presents a consolidated design+plan for approval:
+1. **Complexity classification**: Loom determines the task is `simple` and selects Express workflow
+2. **Clarifying questions** (1-2 turns): Loom asks focused questions about problem scope only
+3. **Structured brief**: Loom presents a consolidated design+plan for approval:
 
 ```
 ## Express Brief: Health Check Endpoint
@@ -156,7 +156,7 @@ Approve to proceed?
 
 ## Workflow Modes
 
-Maestro classifies every task by complexity before choosing a workflow mode. The classification happens automatically when you invoke `/maestro:orchestrate`, and the user can override the result.
+Loom classifies every task by complexity before choosing a workflow mode. The classification happens automatically when you invoke `/loom:orchestrate`, and the user can override the result.
 
 ### Complexity Classification
 
@@ -179,7 +179,7 @@ Express mode replaces the Standard 4-phase ceremony with a streamlined flow:
 
 Express always dispatches sequentially. It bypasses the execution mode gate entirely.
 
-**Escalation to Standard**: If the user rejects the structured brief twice, Maestro escalates to Standard workflow -- overriding the classification to `medium` and starting from the beginning of the Standard flow.
+**Escalation to Standard**: If the user rejects the structured brief twice, Loom escalates to Standard workflow -- overriding the classification to `medium` and starting from the beginning of the Standard flow.
 
 ### Standard Workflow (Medium/Complex Tasks)
 
@@ -210,7 +210,7 @@ The design dialogue is Phase 1 of the Standard workflow. It is not used in Expre
 
 ### Depth Selector
 
-Before asking any design questions, Maestro presents a depth selector to control the level of reasoning applied throughout the design phase:
+Before asking any design questions, Loom presents a depth selector to control the level of reasoning applied throughout the design phase:
 
 - **Quick** -- Standard reasoning behavior. One question per topic, pros/cons on approaches, standard design sections. No enrichment steps. Choose this when you already have clarity and want to move fast.
 - **Standard** (Recommended) -- Adds assumption surfacing after each answer and a decision matrix during approach evaluation. Design sections gain rationale annotations tying decisions to project context.
@@ -222,7 +222,7 @@ The chosen depth is recorded in the design document frontmatter as `design_depth
 
 ### Codebase Investigation
 
-For tasks targeting an existing codebase, Maestro calls the built-in `codebase_investigator` before proposing architectural approaches. The investigator gathers:
+For tasks targeting an existing codebase, Loom calls the built-in `codebase_investigator` before proposing architectural approaches. The investigator gathers:
 
 - Current architecture slice relevant to the task
 - Most likely impacted modules and files
@@ -235,7 +235,7 @@ This grounds the design in reality rather than assumptions. For greenfield tasks
 
 ### Domain Analysis
 
-Before decomposing into phases, Maestro assesses the task across 8 capability domains proportional to task complexity:
+Before decomposing into phases, Loom assesses the task across 8 capability domains proportional to task complexity:
 
 | Domain | Signal Questions | Candidate Agents |
 |--------|-----------------|-----------------|
@@ -255,18 +255,18 @@ Domain analysis scope by complexity:
 
 ### Architectural Approaches
 
-After gathering requirements, Maestro presents 2-3 architectural approaches. Each includes:
+After gathering requirements, Loom presents 2-3 architectural approaches. Each includes:
 
 - Summary and high-level architecture description
 - Pros and cons
 - Best-fit scenarios
 - Risk level
 
-Choose your preferred approach. Maestro accepts your choice without pushback and uses it to structure the design document.
+Choose your preferred approach. Loom accepts your choice without pushback and uses it to structure the design document.
 
 ### Section-by-Section Review
 
-Once you choose an approach, Maestro presents the design document in sections (200-300 words each). The number of sections scales with complexity:
+Once you choose an approach, Loom presents the design document in sections (200-300 words each). The number of sections scales with complexity:
 
 | Complexity | Minimum Sections |
 |------------|-----------------|
@@ -283,7 +283,7 @@ Standard sections include:
 6. Success Criteria
 7. Non-Functional Requirements
 
-After each section, you approve or request changes. Once all sections are approved, Maestro writes the design document to `<MAESTRO_STATE_DIR>/plans/YYYY-MM-DD-<topic>-design.md`.
+After each section, you approve or request changes. Once all sections are approved, Loom writes the design document to `<LOOM_STATE_DIR>/plans/YYYY-MM-DD-<topic>-design.md`.
 
 ## Implementation Planning
 
@@ -291,7 +291,7 @@ Implementation planning is Phase 2 of the Standard workflow. Express mode does n
 
 ### Grounded Decomposition
 
-Maestro analyzes the approved design and breaks it into implementation phases. If the plan would otherwise rely on assumed file locations, unclear ownership boundaries, or guessed integration points, Maestro calls the `codebase_investigator` before decomposition to ground the plan in the actual repository structure.
+Loom analyzes the approved design and breaks it into implementation phases. If the plan would otherwise rely on assumed file locations, unclear ownership boundaries, or guessed integration points, Loom calls the `codebase_investigator` before decomposition to ground the plan in the actual repository structure.
 
 Each phase is assigned:
 - One or more specialized agents based on task domain
@@ -311,7 +311,7 @@ Phase limits scale with task complexity:
 
 ### Dependency Optimization
 
-Maestro maps dependencies between phases and identifies parallel execution opportunities. Phases at the same dependency depth with non-overlapping file ownership can be batched for parallel dispatch. The plan explicitly marks:
+Loom maps dependencies between phases and identifies parallel execution opportunities. Phases at the same dependency depth with non-overlapping file ownership can be batched for parallel dispatch. The plan explicitly marks:
 
 - `blocked_by`: list of phase IDs that must complete before this phase starts
 - `parallel: true/false`: whether the phase is eligible for parallel execution
@@ -319,7 +319,7 @@ Maestro maps dependencies between phases and identifies parallel execution oppor
 
 ### Plan Validation
 
-Maestro validates the implementation plan for structural correctness:
+Loom validates the implementation plan for structural correctness:
 
 - All phase dependencies reference valid phase IDs
 - No circular dependency chains exist
@@ -327,7 +327,7 @@ Maestro validates the implementation plan for structural correctness:
 - Agent assignments match the available agent roster
 - Validation commands are specified for phases that produce testable output
 
-The validated plan is written to `<MAESTRO_STATE_DIR>/plans/YYYY-MM-DD-<topic>-impl-plan.md`. A session state file is created at `<MAESTRO_STATE_DIR>/state/active-session.md`.
+The validated plan is written to `<LOOM_STATE_DIR>/plans/YYYY-MM-DD-<topic>-impl-plan.md`. A session state file is created at `<LOOM_STATE_DIR>/state/active-session.md`.
 
 ## Execution
 
@@ -339,12 +339,12 @@ The execution mode gate must resolve before any delegation proceeds. It is a har
 
 **Resolution flow:**
 
-1. Read `MAESTRO_EXECUTION_MODE` (default: `ask`)
+1. Read `LOOM_EXECUTION_MODE` (default: `ask`)
 2. If `parallel`: record in session state, skip to delegation
 3. If `sequential`: record in session state, skip to delegation
 4. If `ask`: analyze the implementation plan and prompt the user
 
-When prompting, Maestro presents plan analysis (total phases, parallelizable phases, distinct batches, sequential-only phases, file overlap warnings) and a recommendation:
+When prompting, Loom presents plan analysis (total phases, parallelizable phases, distinct batches, sequential-only phases, file overlap warnings) and a recommendation:
 
 - If parallelizable phases > 50% of total phases: recommend **parallel**
 - If parallelizable phases <= 1: recommend **sequential**
@@ -352,12 +352,12 @@ When prompting, Maestro presents plan analysis (total phases, parallelizable pha
 
 ### Native Parallel Execution
 
-When parallel mode is selected, Maestro dispatches independent phases as native subagent batches using Gemini CLI's built-in scheduler.
+When parallel mode is selected, Loom dispatches independent phases as native subagent batches using Gemini CLI's built-in scheduler.
 
 **How a batch executes:**
 
 1. Identify the ready batch from the implementation plan (phases at the same dependency depth with non-overlapping file ownership)
-2. Slice the ready batch using `MAESTRO_MAX_CONCURRENT` (`0` = dispatch full batch)
+2. Slice the ready batch using `LOOM_MAX_CONCURRENT` (`0` = dispatch full batch)
 3. Mark the current chunk `in_progress` in session state and set `current_batch`
 4. Emit contiguous subagent tool calls for the chunk -- agent calls only, no interleaved operations
 5. Each delegation prompt includes:
@@ -373,19 +373,19 @@ If a batch has only one phase, it executes sequentially even in parallel mode.
 
 ### Sequential Execution
 
-When sequential mode is selected, Maestro delegates phases one at a time in dependency order. Each delegation includes the same protocol injection and context chain as parallel mode, but execution pauses between phases for state updates and validation.
+When sequential mode is selected, Loom delegates phases one at a time in dependency order. Each delegation includes the same protocol injection and context chain as parallel mode, but execution pauses between phases for state updates and validation.
 
 Sequential mode preserves plan order even when phases are marked parallel-safe.
 
 ### MCP State Operations
 
-Session state updates use MCP tools (`update_session`, `transition_phase`, `get_session_status`) for structured I/O and atomic transitions. If MCP tools are unavailable, Maestro falls back to direct filesystem operations on `<MAESTRO_STATE_DIR>/state/active-session.md`.
+Session state updates use MCP tools (`update_session`, `transition_phase`, `get_session_status`) for structured I/O and atomic transitions. If MCP tools are unavailable, Loom falls back to direct filesystem operations on `<LOOM_STATE_DIR>/state/active-session.md`.
 
 ### Error Handling and Retries
 
 If a phase fails:
 1. The error is recorded in session state with retry count
-2. Maestro retries automatically up to `MAESTRO_MAX_RETRIES` (default: 2) times
+2. Loom retries automatically up to `LOOM_MAX_RETRIES` (default: 2) times
 3. If retries are exhausted, the user is asked for guidance:
    - Retry with modified instructions
    - Skip the phase
@@ -393,20 +393,20 @@ If a phase fails:
 
 ### Code Review Gate
 
-At the end of Phase 4 (Completion), if execution changed non-documentation files (source, test, config, scripts), Maestro runs a final `code_reviewer` quality gate on all changed files.
+At the end of Phase 4 (Completion), if execution changed non-documentation files (source, test, config, scripts), Loom runs a final `code_reviewer` quality gate on all changed files.
 
 - **Critical or Major findings**: Block completion. The orchestrator remediates the findings, re-validates, and re-runs the review gate until resolved.
 - **Minor or Suggestion findings**: Recorded and reported in the completion summary but do not block.
 
 ## Command Reference
 
-### /maestro:orchestrate
+### /loom:orchestrate
 
-Start a full Maestro orchestration for an engineering task.
+Start a full Loom orchestration for an engineering task.
 
 **Syntax**:
 ```
-/maestro:orchestrate <task description>
+/loom:orchestrate <task description>
 ```
 
 **Arguments**:
@@ -421,12 +421,12 @@ Start a full Maestro orchestration for an engineering task.
 
 **When to Use**:
 - Any engineering task, from simple config changes to complex multi-service architectures
-- When you want Maestro to determine the appropriate workflow depth
+- When you want Loom to determine the appropriate workflow depth
 - When you need structured orchestration with progress tracking
 
 **Example**:
 ```
-/maestro:orchestrate Build a REST API for a task management system with user authentication
+/loom:orchestrate Build a REST API for a task management system with user authentication
 ```
 
 **Expected Output**:
@@ -435,18 +435,18 @@ Start a full Maestro orchestration for an engineering task.
 - Phase-by-phase execution with progress updates
 - Completion summary with files changed and next steps
 
-### /maestro:execute
+### /loom:execute
 
 Execute an existing implementation plan, skipping design and planning phases.
 
 **Syntax**:
 ```
-/maestro:execute <path-to-implementation-plan>
+/loom:execute <path-to-implementation-plan>
 ```
 
 **Arguments**:
-- `<path-to-implementation-plan>`: Path to an implementation plan file (e.g., `docs/maestro/plans/2026-02-15-api-refactor-impl-plan.md`)
-- If omitted, Maestro checks `<MAESTRO_STATE_DIR>/plans/` for the most recent plan
+- `<path-to-implementation-plan>`: Path to an implementation plan file (e.g., `docs/loom/plans/2026-02-15-api-refactor-impl-plan.md`)
+- If omitted, Loom checks `<LOOM_STATE_DIR>/plans/` for the most recent plan
 
 **Behavior**:
 1. Reads the specified implementation plan
@@ -467,7 +467,7 @@ Execute an existing implementation plan, skipping design and planning phases.
 
 **Example**:
 ```
-/maestro:execute docs/maestro/plans/2026-02-15-api-refactor-impl-plan.md
+/loom:execute docs/loom/plans/2026-02-15-api-refactor-impl-plan.md
 ```
 
 **Expected Output**:
@@ -483,19 +483,19 @@ Execution Mode:
 Which mode would you like to use? (parallel/sequential)
 ```
 
-### /maestro:resume
+### /loom:resume
 
 Resume an interrupted orchestration session.
 
 **Syntax**:
 ```
-/maestro:resume
+/loom:resume
 ```
 
 **Arguments**: None
 
 **Behavior**:
-1. Reads `<MAESTRO_STATE_DIR>/state/active-session.md`
+1. Reads `<LOOM_STATE_DIR>/state/active-session.md`
 2. Parses session metadata and phase statuses
 3. Presents a status summary with completed/pending/failed phases
 4. If errors exist, presents them and asks for guidance before retrying
@@ -512,7 +512,7 @@ Resume an interrupted orchestration session.
 
 **Example**:
 ```
-/maestro:resume
+/loom:resume
 ```
 
 **Expected Output**:
@@ -534,18 +534,18 @@ Phase 3 (coder):
 I'll retry Phase 3 now. Continue?
 ```
 
-### /maestro:review
+### /loom:review
 
 Run a standalone code review on staged changes, last commit, or specified paths.
 
 **Syntax**:
 ```
-/maestro:review [file paths or glob patterns]
+/loom:review [file paths or glob patterns]
 ```
 
 **Arguments**:
 - `[file paths or glob patterns]`: Optional. Specific files or patterns to review (e.g., `src/api/*.js`)
-- If omitted, Maestro auto-detects scope: staged changes > last commit diff
+- If omitted, Loom auto-detects scope: staged changes > last commit diff
 
 **Behavior**:
 1. Auto-detects review scope (priority order):
@@ -569,7 +569,7 @@ Run a standalone code review on staged changes, last commit, or specified paths.
 
 **Example**:
 ```
-/maestro:review src/api/tasks.js src/api/users.js
+/loom:review src/api/tasks.js src/api/users.js
 ```
 
 **Expected Output**:
@@ -601,13 +601,13 @@ SUGGESTIONS (1):
 - src/api/tasks.js:60-80 -- Consider extracting validation logic to middleware
 ```
 
-### /maestro:debug
+### /loom:debug
 
 Focused debugging session to investigate and diagnose an issue.
 
 **Syntax**:
 ```
-/maestro:debug <issue description>
+/loom:debug <issue description>
 ```
 
 **Arguments**:
@@ -636,7 +636,7 @@ Focused debugging session to investigate and diagnose an issue.
 
 **Example**:
 ```
-/maestro:debug User login returns 500 error when password contains special characters
+/loom:debug User login returns 500 error when password contains special characters
 ```
 
 **Expected Output**:
@@ -667,13 +667,13 @@ Regression Prevention:
 Add test case for passwords with special characters in the validation test suite.
 ```
 
-### /maestro:security-audit
+### /loom:security-audit
 
 Run a security assessment on the specified scope.
 
 **Syntax**:
 ```
-/maestro:security-audit <scope>
+/loom:security-audit <scope>
 ```
 
 **Arguments**:
@@ -704,7 +704,7 @@ Run a security assessment on the specified scope.
 
 **Example**:
 ```
-/maestro:security-audit src/auth src/api
+/loom:security-audit src/auth src/api
 ```
 
 **Expected Output**:
@@ -737,13 +737,13 @@ Overall Security Posture: High Risk
 Critical issues must be addressed before production deployment.
 ```
 
-### /maestro:perf-check
+### /loom:perf-check
 
 Run a performance analysis on the specified scope.
 
 **Syntax**:
 ```
-/maestro:perf-check <scope>
+/loom:perf-check <scope>
 ```
 
 **Arguments**:
@@ -772,7 +772,7 @@ Run a performance analysis on the specified scope.
 
 **Example**:
 ```
-/maestro:perf-check src/api/tasks.js
+/loom:perf-check src/api/tasks.js
 ```
 
 **Expected Output**:
@@ -806,13 +806,13 @@ Optimization Recommendations (ranked by impact-to-effort):
    Effort: 5 minutes
 ```
 
-### /maestro:seo-audit
+### /loom:seo-audit
 
 Run a technical SEO assessment on web-facing deliverables.
 
 **Syntax**:
 ```
-/maestro:seo-audit <scope>
+/loom:seo-audit <scope>
 ```
 
 **Arguments**:
@@ -831,16 +831,16 @@ Run a technical SEO assessment on web-facing deliverables.
 
 **Example**:
 ```
-/maestro:seo-audit src/pages
+/loom:seo-audit src/pages
 ```
 
-### /maestro:a11y-audit
+### /loom:a11y-audit
 
 Run a WCAG accessibility audit on user-facing components.
 
 **Syntax**:
 ```
-/maestro:a11y-audit <scope>
+/loom:a11y-audit <scope>
 ```
 
 **Arguments**:
@@ -859,16 +859,16 @@ Run a WCAG accessibility audit on user-facing components.
 
 **Example**:
 ```
-/maestro:a11y-audit src/components
+/loom:a11y-audit src/components
 ```
 
-### /maestro:compliance-check
+### /loom:compliance-check
 
 Run a regulatory compliance review on the specified scope.
 
 **Syntax**:
 ```
-/maestro:compliance-check <scope>
+/loom:compliance-check <scope>
 ```
 
 **Arguments**:
@@ -887,22 +887,22 @@ Run a regulatory compliance review on the specified scope.
 
 **Example**:
 ```
-/maestro:compliance-check src/data-handling
+/loom:compliance-check src/data-handling
 ```
 
-### /maestro:status
+### /loom:status
 
 Display the current orchestration session status.
 
 **Syntax**:
 ```
-/maestro:status
+/loom:status
 ```
 
 **Arguments**: None
 
 **Behavior**:
-1. Reads `<MAESTRO_STATE_DIR>/state/active-session.md`
+1. Reads `<LOOM_STATE_DIR>/state/active-session.md`
 2. Presents a concise status summary:
    - Session ID and creation timestamp
    - Workflow mode (express or standard)
@@ -921,7 +921,7 @@ Display the current orchestration session status.
 
 **Example**:
 ```
-/maestro:status
+/loom:status
 ```
 
 **Expected Output**:
@@ -953,19 +953,19 @@ Token Usage:
 Errors: None
 ```
 
-### /maestro:archive
+### /loom:archive
 
 Archive the current active orchestration session.
 
 **Syntax**:
 ```
-/maestro:archive
+/loom:archive
 ```
 
 **Arguments**: None
 
 **Behavior**:
-1. Checks for an active session at `<MAESTRO_STATE_DIR>/state/active-session.md`
+1. Checks for an active session at `<LOOM_STATE_DIR>/state/active-session.md`
 2. If no active session exists, informs you there is nothing to archive
 3. If an active session exists:
    - Presents a summary of what will be archived
@@ -976,13 +976,13 @@ Archive the current active orchestration session.
 4. Verifies archival was successful (no `active-session.md` remains)
 
 **When to Use**:
-- Manually archiving a completed session (when `MAESTRO_AUTO_ARCHIVE` is `false`)
+- Manually archiving a completed session (when `LOOM_AUTO_ARCHIVE` is `false`)
 - Cleaning up an incomplete session you no longer need
 - Before starting a new orchestration (required if active session exists)
 
 **Example**:
 ```
-/maestro:archive
+/loom:archive
 ```
 
 **Expected Output**:
@@ -997,9 +997,9 @@ This session will be archived with incomplete phases. Continue?
 [After confirmation]
 
 Archived Successfully:
-- Design document -> docs/maestro/plans/archive/2026-02-15-task-management-api-design.md
-- Implementation plan -> docs/maestro/plans/archive/2026-02-15-task-management-api-impl-plan.md
-- Session state -> docs/maestro/state/archive/2026-02-15-task-management-api.md
+- Design document -> docs/loom/plans/archive/2026-02-15-task-management-api-design.md
+- Implementation plan -> docs/loom/plans/archive/2026-02-15-task-management-api-impl-plan.md
+- Session state -> docs/loom/state/archive/2026-02-15-task-management-api.md
 
 No active session remains.
 ```
@@ -1008,30 +1008,30 @@ No active session remains.
 
 ### Session State Files
 
-Maestro tracks all orchestration progress in `<MAESTRO_STATE_DIR>/state/active-session.md` using YAML frontmatter + Markdown body.
+Loom tracks all orchestration progress in `<LOOM_STATE_DIR>/state/active-session.md` using YAML frontmatter + Markdown body.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> New: /maestro:orchestrate
+    [*] --> New: /loom:orchestrate
     New --> Active: Begin execution
     Active --> Completed: All phases complete
     Active --> Interrupted: Timeout/error/stop
-    Interrupted --> Active: /maestro:resume
-    Completed --> Archived: Auto-archive or /maestro:archive
-    Active --> Archived: /maestro:archive (manual)
+    Interrupted --> Active: /loom:resume
+    Completed --> Archived: Auto-archive or /loom:archive
+    Active --> Archived: /loom:archive (manual)
     Archived --> [*]
 ```
 
 **Location**:
 ```
 <your-project>/
-└── docs/maestro/
-    ├── plans/                          # Active design docs and implementation plans
-    │   └── archive/                    # Completed plans
-    ├── state/
-    │   ├── active-session.md           # Current orchestration
-    │   └── archive/                    # Completed sessions
-    │       └── 2026-02-15-task-management-api.md
+â””â”€â”€ docs/loom/
+    â”œâ”€â”€ plans/                          # Active design docs and implementation plans
+    â”‚   â””â”€â”€ archive/                    # Completed plans
+    â”œâ”€â”€ state/
+    â”‚   â”œâ”€â”€ active-session.md           # Current orchestration
+    â”‚   â””â”€â”€ archive/                    # Completed sessions
+    â”‚       â””â”€â”€ 2026-02-15-task-management-api.md
 ```
 
 **State file structure**:
@@ -1045,8 +1045,8 @@ workflow_mode: "standard"
 task_complexity: "medium"
 execution_mode: "parallel"
 execution_backend: "native"
-design_document: "docs/maestro/plans/2026-02-15-task-management-api-design.md"
-implementation_plan: "docs/maestro/plans/2026-02-15-task-management-api-impl-plan.md"
+design_document: "docs/loom/plans/2026-02-15-task-management-api-design.md"
+implementation_plan: "docs/loom/plans/2026-02-15-task-management-api-impl-plan.md"
 current_phase: 3
 current_batch: null
 total_phases: 5
@@ -1101,10 +1101,10 @@ Express sessions go from creation to single-phase execution to code review to ar
 If orchestration is interrupted (timeout, manual stop, error), resume with:
 
 ```
-/maestro:resume
+/loom:resume
 ```
 
-Maestro will:
+Loom will:
 1. Read the session state
 2. Present a summary of what is completed and what is pending
 3. If errors exist, present them and ask for guidance
@@ -1115,34 +1115,34 @@ Maestro will:
 1. **Timeout**: An agent took too long and was terminated
    - Review the timeout error in session state
    - Narrow the phase scope or tune the agent via Gemini CLI `agents.overrides` if needed
-   - `/maestro:resume` to retry
+   - `/loom:resume` to retry
 
 2. **Validation Failure**: Build or tests failed after a phase
    - Review the error logs
    - Manually fix the issue
-   - `/maestro:resume` to retry validation
+   - `/loom:resume` to retry validation
 
 3. **Manual Stop**: You stopped Gemini CLI mid-orchestration
-   - `/maestro:resume` picks up where you left off
+   - `/loom:resume` picks up where you left off
 
 ### Archiving Sessions
 
-Sessions are automatically archived on completion if `MAESTRO_AUTO_ARCHIVE` is `true` (default).
+Sessions are automatically archived on completion if `LOOM_AUTO_ARCHIVE` is `true` (default).
 
 To manually archive a session:
 
 ```
-/maestro:archive
+/loom:archive
 ```
 
 This moves:
-- Design document to `<MAESTRO_STATE_DIR>/plans/archive/` (Standard only)
-- Implementation plan to `<MAESTRO_STATE_DIR>/plans/archive/` (Standard only)
-- Session state to `<MAESTRO_STATE_DIR>/state/archive/<session-id>.md`
+- Design document to `<LOOM_STATE_DIR>/plans/archive/` (Standard only)
+- Implementation plan to `<LOOM_STATE_DIR>/plans/archive/` (Standard only)
+- Session state to `<LOOM_STATE_DIR>/state/archive/<session-id>.md`
 
 ### Multiple Sessions
 
-Maestro enforces a single active session at a time. If you start `/maestro:orchestrate` with an existing active session, Maestro will:
+Loom enforces a single active session at a time. If you start `/loom:orchestrate` with an existing active session, Loom will:
 1. Detect the active session
 2. Present its status
 3. Offer to resume or archive it
@@ -1154,7 +1154,7 @@ This prevents conflicting orchestrations and accidental overwrites.
 
 ### Agent Roster
 
-Maestro coordinates 22 specialized subagents across 8 editorial domains:
+Loom coordinates 22 specialized subagents across 8 editorial domains:
 
 All agents share a baseline tool set: `read_file`, `list_directory`, `glob`, `grep_search`, `read_many_files`, `ask_user`. Tool tiers reflect additional capabilities beyond that baseline.
 
@@ -1258,19 +1258,19 @@ Agents cover 8 editorial domains. Domain analysis during planning determines whi
 
 ## Configuration
 
-Maestro works out of the box with sensible defaults. To customize behavior, set environment variables in your shell profile or project `.env` file.
+Loom works out of the box with sensible defaults. To customize behavior, set environment variables in your shell profile or project `.env` file.
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MAESTRO_DISABLED_AGENTS` | _(none)_ | Comma-separated list of agent names to exclude from implementation planning |
-| `MAESTRO_MAX_RETRIES` | `2` | Maximum retry attempts per phase before escalating to the user |
-| `MAESTRO_AUTO_ARCHIVE` | `true` | Automatically archive session state on successful completion |
-| `MAESTRO_VALIDATION_STRICTNESS` | `normal` | Post-phase validation strictness level (`strict`, `normal`, or `lenient`) |
-| `MAESTRO_STATE_DIR` | `docs/maestro` | Base directory for session state and plans |
-| `MAESTRO_MAX_CONCURRENT` | `0` | Maximum subagents emitted in one native parallel batch turn (`0` = dispatch the entire ready batch) |
-| `MAESTRO_EXECUTION_MODE` | `ask` | Phase 3 execution mode: `parallel` (native concurrent subagents), `sequential` (one at a time), or `ask` (prompt each time) |
+| `LOOM_DISABLED_AGENTS` | _(none)_ | Comma-separated list of agent names to exclude from implementation planning |
+| `LOOM_MAX_RETRIES` | `2` | Maximum retry attempts per phase before escalating to the user |
+| `LOOM_AUTO_ARCHIVE` | `true` | Automatically archive session state on successful completion |
+| `LOOM_VALIDATION_STRICTNESS` | `normal` | Post-phase validation strictness level (`strict`, `normal`, or `lenient`) |
+| `LOOM_STATE_DIR` | `docs/loom` | Base directory for session state and plans |
+| `LOOM_MAX_CONCURRENT` | `0` | Maximum subagents emitted in one native parallel batch turn (`0` = dispatch the entire ready batch) |
+| `LOOM_EXECUTION_MODE` | `ask` | Phase 3 execution mode: `parallel` (native concurrent subagents), `sequential` (one at a time), or `ask` (prompt each time) |
 
 
 Setting resolution precedence: exported env var > workspace `.env` > extension `.env` > default.
@@ -1278,44 +1278,44 @@ Setting resolution precedence: exported env var > workspace `.env` > extension `
 You can set extension-scoped values interactively with:
 
 ```bash
-gemini extensions config maestro
+gemini extensions config loom
 ```
 
 ### Configuration Examples
 
 **Exclude specific agents from planning**:
 ```bash
-export MAESTRO_DISABLED_AGENTS=devops_engineer,performance_engineer
+export LOOM_DISABLED_AGENTS=devops_engineer,performance_engineer
 ```
 
 **Use parallel mode by default** (skip the mode gate prompt):
 ```bash
-export MAESTRO_EXECUTION_MODE=parallel
+export LOOM_EXECUTION_MODE=parallel
 ```
 
 **Disable auto-archive for manual review**:
 ```bash
-export MAESTRO_AUTO_ARCHIVE=false
+export LOOM_AUTO_ARCHIVE=false
 ```
 
 **Custom state directory**:
 ```bash
-export MAESTRO_STATE_DIR=.maestro
+export LOOM_STATE_DIR=.loom
 ```
 
 **Limit parallel batch size** to 2 agents per batch:
 ```bash
-export MAESTRO_MAX_CONCURRENT=2
+export LOOM_MAX_CONCURRENT=2
 ```
 
 **Increase retry attempts** for flaky environments:
 ```bash
-export MAESTRO_MAX_RETRIES=3
+export LOOM_MAX_RETRIES=3
 ```
 
 ### Validation Strictness
 
-Controls how strictly Maestro enforces validation after each phase:
+Controls how strictly Loom enforces validation after each phase:
 
 - **strict**: All failures and warnings block phase completion. Lint warnings, deprecation notices, and coverage decreases all block.
 - **normal** (default): Build/lint/test errors block phase completion. Lint warnings, deprecation notices, and coverage decreases are recorded but do not block.
@@ -1323,12 +1323,12 @@ Controls how strictly Maestro enforces validation after each phase:
 
 Set via:
 ```bash
-export MAESTRO_VALIDATION_STRICTNESS=strict
+export LOOM_VALIDATION_STRICTNESS=strict
 ```
 
 ## Tips and Best Practices
 
-### Effective Prompting for /maestro:orchestrate
+### Effective Prompting for /loom:orchestrate
 
 **Be Specific**:
 - Good: "Build a REST API for a task management system with user authentication, task CRUD, and assignment features"
@@ -1344,11 +1344,11 @@ export MAESTRO_VALIDATION_STRICTNESS=strict
 
 ### Workflow Selection Tips
 
-Maestro classifies complexity automatically, but you can influence the classification:
+Loom classifies complexity automatically, but you can influence the classification:
 
 - **To encourage Express**: describe a focused, single-concern task: "Add a health check endpoint" rather than "Add monitoring infrastructure"
 - **To encourage Standard**: describe multi-component scope or mention architectural concerns: "Build a REST API with authentication, database schema, and CI/CD pipeline"
-- You can always override the classification when Maestro presents it
+- You can always override the classification when Loom presents it
 
 ### Parallel vs Sequential Execution
 
@@ -1365,16 +1365,16 @@ Maestro classifies complexity automatically, but you can influence the classific
 - You want to review output after each phase
 
 **Hybrid Approach**:
-- Use `MAESTRO_EXECUTION_MODE=ask` (default) to choose mode per orchestration based on the specific plan analysis
+- Use `LOOM_EXECUTION_MODE=ask` (default) to choose mode per orchestration based on the specific plan analysis
 
 ### Token Usage Optimization
 
-Token usage is tracked in session state and displayed in `/maestro:status` and completion summaries.
+Token usage is tracked in session state and displayed in `/loom:status` and completion summaries.
 
 **Tips**:
 - Tune agent models and limits with Gemini CLI `agents.overrides` when you need cost or latency control
 - Break large tasks into smaller orchestrations to isolate token costs
-- Review token usage with `/maestro:status` before proceeding to expensive phases
+- Review token usage with `/loom:status` before proceeding to expensive phases
 - Express workflow is inherently token-efficient due to its single-agent flow
 
 **Cost Awareness**:
@@ -1388,27 +1388,27 @@ Token usage is tracked in session state and displayed in `/maestro:status` and c
 ```mermaid
 flowchart TD
     Start([Need Help?]) --> Complex{Complex multi-agent task?}
-    Complex -->|Yes| Orchestrate[/maestro:orchestrate]
+    Complex -->|Yes| Orchestrate[/loom:orchestrate]
     Complex -->|No| HasPlan{Have existing plan?}
 
-    HasPlan -->|Yes| Execute[/maestro:execute]
+    HasPlan -->|Yes| Execute[/loom:execute]
     HasPlan -->|No| Interrupted{Interrupted session?}
 
-    Interrupted -->|Yes| Resume[/maestro:resume]
+    Interrupted -->|Yes| Resume[/loom:resume]
     Interrupted -->|No| SpecializedTask{What kind of task?}
 
-    SpecializedTask -->|Code review| Review[/maestro:review]
-    SpecializedTask -->|Bug investigation| Debug[/maestro:debug]
-    SpecializedTask -->|Performance issue| PerfCheck[/maestro:perf-check]
-    SpecializedTask -->|Security concern| SecurityAudit[/maestro:security-audit]
-    SpecializedTask -->|SEO issues| SeoAudit[/maestro:seo-audit]
-    SpecializedTask -->|Accessibility| A11yAudit[/maestro:a11y-audit]
-    SpecializedTask -->|Compliance| ComplianceCheck[/maestro:compliance-check]
-    SpecializedTask -->|Check progress| Status[/maestro:status]
-    SpecializedTask -->|Clean up| Archive[/maestro:archive]
+    SpecializedTask -->|Code review| Review[/loom:review]
+    SpecializedTask -->|Bug investigation| Debug[/loom:debug]
+    SpecializedTask -->|Performance issue| PerfCheck[/loom:perf-check]
+    SpecializedTask -->|Security concern| SecurityAudit[/loom:security-audit]
+    SpecializedTask -->|SEO issues| SeoAudit[/loom:seo-audit]
+    SpecializedTask -->|Accessibility| A11yAudit[/loom:a11y-audit]
+    SpecializedTask -->|Compliance| ComplianceCheck[/loom:compliance-check]
+    SpecializedTask -->|Check progress| Status[/loom:status]
+    SpecializedTask -->|Clean up| Archive[/loom:archive]
 ```
 
-**Use `/maestro:orchestrate` when**:
+**Use `/loom:orchestrate` when**:
 - Task requires multiple specialized agents
 - You need architectural design before implementation
 - Project is complex with dependencies between components
@@ -1423,14 +1423,14 @@ flowchart TD
 
 ### Extension Not Loading
 
-**Symptom**: Maestro commands (`/maestro:orchestrate`, etc.) are not available in Gemini CLI.
+**Symptom**: Loom commands (`/loom:orchestrate`, etc.) are not available in Gemini CLI.
 
 **Diagnosis**:
 1. Verify the extension is linked:
    ```bash
    gemini extensions list
    ```
-   You should see `maestro` in the list.
+   You should see `loom` in the list.
 
 2. Check that `gemini-extension.json` exists in the extension directory.
 
@@ -1441,7 +1441,7 @@ flowchart TD
 
 ### Subagents Not Enabled
 
-**Symptom**: Maestro reports "Subagents are not enabled" on startup.
+**Symptom**: Loom reports "Subagents are not enabled" on startup.
 
 **Diagnosis**:
 Check `~/.gemini/settings.json` for:
@@ -1458,18 +1458,18 @@ Check `~/.gemini/settings.json` for:
 2. Add the `experimental` section (or update existing file)
 3. Save and restart Gemini CLI
 
-Maestro will not update this setting automatically; update `~/.gemini/settings.json` manually, then restart Gemini CLI.
+Loom will not update this setting automatically; update `~/.gemini/settings.json` manually, then restart Gemini CLI.
 
 ### Session State Corrupted
 
-**Symptom**: `/maestro:resume` fails with YAML parsing errors.
+**Symptom**: `/loom:resume` fails with YAML parsing errors.
 
 **Diagnosis**:
 Read the session state file and check for syntax errors in the YAML frontmatter (unmatched quotes, invalid indentation, etc.).
 
 **Solution**:
-1. **Manual Fix**: Edit `<MAESTRO_STATE_DIR>/state/active-session.md` to fix YAML syntax
-2. **Archive and Restart**: `/maestro:archive` to move the corrupted session, then start fresh with `/maestro:orchestrate`
+1. **Manual Fix**: Edit `<LOOM_STATE_DIR>/state/active-session.md` to fix YAML syntax
+2. **Archive and Restart**: `/loom:archive` to move the corrupted session, then start fresh with `/loom:orchestrate`
 3. **Delete State**: Remove `active-session.md` and start fresh (loses progress)
 
 ### Parallel Execution Issues
@@ -1482,9 +1482,9 @@ Read the session state file and check for syntax errors in the YAML frontmatter 
 3. Check whether an agent asked a follow-up question that paused the batch
 
 **Solution**:
-1. Reduce batch size: `export MAESTRO_MAX_CONCURRENT=1`
-2. Fall back to sequential mode: `export MAESTRO_EXECUTION_MODE=sequential`
-3. Resume after tightening the plan: `/maestro:resume`
+1. Reduce batch size: `export LOOM_MAX_CONCURRENT=1`
+2. Fall back to sequential mode: `export LOOM_EXECUTION_MODE=sequential`
+3. Resume after tightening the plan: `/loom:resume`
 
 ### Validation Failures
 
@@ -1499,8 +1499,8 @@ Check session state for validation error logs. Common causes:
 **Solution**:
 1. Review error logs in session state
 2. Manually fix the issue
-3. `/maestro:resume` to retry validation
-4. Adjust validation strictness if needed: `export MAESTRO_VALIDATION_STRICTNESS=lenient`
+3. `/loom:resume` to retry validation
+4. Adjust validation strictness if needed: `export LOOM_VALIDATION_STRICTNESS=lenient`
 
 ### File Conflicts
 
@@ -1510,34 +1510,34 @@ Check session state for validation error logs. Common causes:
 Multiple agents tried to modify the same file (parallel execution with file overlap).
 
 **Solution**:
-1. Maestro will stop and report conflict details
+1. Loom will stop and report conflict details
 2. Review which agents conflicted
 3. Manually resolve conflicts
 4. Resume with sequential mode:
    ```bash
-   export MAESTRO_EXECUTION_MODE=sequential
-   /maestro:resume
+   export LOOM_EXECUTION_MODE=sequential
+   /loom:resume
    ```
 
 ### Cannot Find Active Session
 
-**Symptom**: `/maestro:resume` or `/maestro:status` reports "No active session found".
+**Symptom**: `/loom:resume` or `/loom:status` reports "No active session found".
 
 **Diagnosis**:
-Check if `active-session.md` exists under your configured state directory (default: `docs/maestro/state/`).
+Check if `active-session.md` exists under your configured state directory (default: `docs/loom/state/`).
 
 **Solution**:
-- If file does not exist: Start a new orchestration with `/maestro:orchestrate`
+- If file does not exist: Start a new orchestration with `/loom:orchestrate`
 - If file is in archive: Start fresh or review the archived file
-- Check `MAESTRO_STATE_DIR` if you have customized it: `echo $MAESTRO_STATE_DIR`
+- Check `LOOM_STATE_DIR` if you have customized it: `echo $LOOM_STATE_DIR`
 
 ### Getting Help
 
 If you encounter issues not covered here:
 
-1. Review session state logs in `<MAESTRO_STATE_DIR>/state/active-session.md`
-2. Check Maestro version: `gemini extensions list`
+1. Review session state logs in `<LOOM_STATE_DIR>/state/active-session.md`
+2. Check Loom version: `gemini extensions list`
 3. Review Gemini CLI logs (location varies by installation)
-4. Report issues on GitHub: [https://github.com/josstei/maestro-orchestrate/issues](https://github.com/josstei/maestro-orchestrate/issues)
+4. Report issues on GitHub: [https://github.com/Nickalus12/loom-orchestrate/issues](https://github.com/Nickalus12/loom-orchestrate/issues)
 
-Include: Maestro version, Gemini CLI version, session state file (redact sensitive data), error messages, and steps to reproduce.
+Include: Loom version, Gemini CLI version, session state file (redact sensitive data), error messages, and steps to reproduce.

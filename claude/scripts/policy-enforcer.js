@@ -1,7 +1,7 @@
-'use strict';
+﻿'use strict';
 
 /**
- * Maestro policy enforcer for Claude Code.
+ * Loom policy enforcer for Claude Code.
  * Reads stdin (Claude Code PreToolUse hook input for Bash),
  * checks tool_input.command against deny and ask patterns,
  * and outputs a decision JSON to stdout.
@@ -61,7 +61,7 @@ const DENY_RULES = [
   {
     "matchType": "regex",
     "pattern": "<<",
-    "reason": "Heredoc corrupts structured content (YAML, Markdown, JSON) — use Write instead"
+    "reason": "Heredoc corrupts structured content (YAML, Markdown, JSON) â€” use Write instead"
   }
 ];
 

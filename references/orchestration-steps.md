@@ -1,15 +1,15 @@
-STARTUP (Turn 1 — tool calls only, no text output)
+﻿STARTUP (Turn 1 â€” tool calls only, no text output)
  1. Call resolve_settings.
  2. Call initialize_workspace with resolved state_dir.
- 3. Call get_session_status — if active, present status and offer resume/archive.
+ 3. Call get_session_status â€” if active, present status and offer resume/archive.
  4. Call assess_task_complexity.
- 5. Parse MAESTRO_DISABLED_AGENTS from resolved settings. Exclude listed agents from all planning.
+ 5. Parse LOOM_DISABLED_AGENTS from resolved settings. Exclude listed agents from all planning.
  6. STOP. Turn 1 is ONLY steps 1-5. No text, no design questions, no file reads.
 
 CLASSIFICATION (Turn 2)
- 7. Load the architecture reference: ["architecture"]. Do NOT load templates yet — they are loaded at their consumption points (steps 13, 15, 20).
+ 7. Load the architecture reference: ["architecture"]. Do NOT load templates yet â€” they are loaded at their consumption points (steps 13, 15, 20).
  8. Classify task as simple/medium/complex. Present classification with rationale.
- 9. Route: simple → Express (step 31). Medium/complex → continue to step 10.
+ 9. Route: simple â†’ Express (step 31). Medium/complex â†’ continue to step 10.
 
 DESIGN (Phase 1)
 10. Enter Plan Mode. If unavailable, follow the runtime preamble's Plan Mode fallback instructions.
@@ -27,8 +27,8 @@ DESIGN (Phase 1)
     server-side rendering, authentication, database queries, or real-time updates.
     </HARD-GATE>
     <ANTI-PATTERN>
-    WRONG: user requests "fan site" → options include React, Next.js, Astro
-    CORRECT: user requests "fan site" → recommended option is vanilla HTML/CSS/JS
+    WRONG: user requests "fan site" â†’ options include React, Next.js, Astro
+    CORRECT: user requests "fan site" â†’ recommended option is vanilla HTML/CSS/JS
     </ANTI-PATTERN>
 12. Present design sections one at a time, per the design-dialogue skill's convergence protocol.
     <HARD-GATE>
@@ -54,23 +54,23 @@ PLANNING (Phase 2)
 17. Present plan for user approval (Approve / Revise / Abort via user prompt).
 18. Write approved implementation plan to <state_dir>/plans/.
 
-EXECUTION SETUP (Phase 3 — pre-delegation)
+EXECUTION SETUP (Phase 3 â€” pre-delegation)
 19. Load the execution skill. Follow its Execution Mode Gate.
     <HARD-GATE>
     Present ONLY "Parallel" and "Sequential" as execution mode options.
-    Do NOT present "Ask" as a user-facing choice — "ask" is a setting value
+    Do NOT present "Ask" as a user-facing choice â€” "ask" is a setting value
     that means "prompt the user", not an execution mode the user selects.
     </HARD-GATE>
 20. Load the session-management skill and session-state template: ["session-management", "session-state"].
 21. Create session via create_session with resolved execution_mode. Do NOT create before mode is resolved.
 22. Load delegation, validation, agent-base-protocol, and filesystem-safety-protocol.
 
-EXECUTION (Phase 3 — delegation loop)
+EXECUTION (Phase 3 â€” delegation loop)
 23. For each phase (or parallel batch): delegate to the assigned agent.
     <HARD-GATE>
     Dispatch by calling the agent's registered tool directly.
     Do NOT use the built-in generalist tool or invoke agents by bare name.
-    Each Maestro agent carries specialized methodology, tool restrictions, temperature,
+    Each Loom agent carries specialized methodology, tool restrictions, temperature,
     and turn limits from its frontmatter that the generalist ignores.
     </HARD-GATE>
 24. After each agent returns, parse Task Report + Downstream Context from response.
@@ -81,7 +81,7 @@ EXECUTION (Phase 3 — delegation loop)
     files_deleted, and downstream_context to the SPECIFIC phase identified by
     completed_phase_id. Extract each agent's Task Report separately and pass
     that agent's files and context to the corresponding phase's call. Do NOT
-    merge all agents' files into one call — the archive attributes files per
+    merge all agents' files into one call â€” the archive attributes files per
     phase, so empty payloads mean lost traceability.
     </HARD-GATE>
 26. Repeat steps 23-25 until all phases complete.
@@ -93,23 +93,23 @@ COMPLETION (Phase 4)
     If Critical/Major findings: re-delegate to the implementing agent to fix.
     The orchestrator MUST NOT write code directly.
     </HARD-GATE>
-29. If MAESTRO_AUTO_ARCHIVE is true (or unset), call archive_session. If false, inform user session is complete but not archived.
+29. If LOOM_AUTO_ARCHIVE is true (or unset), call archive_session. If false, inform user session is complete but not archived.
 30. Present final summary with files changed, phase outcomes, and next steps.
 
 RECOVERY (referenced from any step on user request)
 If the user says the flow moved too fast: return to the most recent unanswered approval gate.
-If the user asks for implementation before approval: remind them Maestro requires approval first.
-If the user asks to skip execution-mode: remind them parallel/sequential is required unless MAESTRO_EXECUTION_MODE pins it.
+If the user asks for implementation before approval: remind them Loom requires approval first.
+If the user asks to skip execution-mode: remind them parallel/sequential is required unless LOOM_EXECUTION_MODE pins it.
 If an answer invalidates a prior choice: restate the updated assumption and re-run the relevant gate.
 If delegation collapses to parent session without fallback approval: return to step 19 or re-scope the child-agent work packages.
 
-EXPRESS WORKFLOW (simple tasks only — jumped to from step 9)
+EXPRESS WORKFLOW (simple tasks only â€” jumped to from step 9)
 
 EXPRESS MODE GATE BYPASS: Express bypasses the execution-mode gate entirely. Express always dispatches sequentially. Do NOT prompt for parallel/sequential.
 
 EXPRESS MCP FALLBACK: If MCP state tools (create_session, transition_phase, archive_session) are unavailable, fall back to direct file writes on <state_dir>/state/active-session.md.
 
-31. Verify classification is simple. If task requires multiple phases or agents, override to medium → step 10.
+31. Verify classification is simple. If task requires multiple phases or agents, override to medium â†’ step 10.
     <HARD-GATE>
     Express sessions MUST have exactly one implementation phase with exactly one agent.
     </HARD-GATE>
@@ -117,18 +117,18 @@ EXPRESS MCP FALLBACK: If MCP state tools (create_session, transition_phase, arch
     <HARD-GATE>
     Each question MUST use the user prompt tool (not plain text). Use the choose
     variant with 2-4 options where possible. Do NOT ask questions as plain text
-    in the model response — the user prompt tool is the only input mechanism.
+    in the model response â€” the user prompt tool is the only input mechanism.
     </HARD-GATE>
 33. Present structured Express brief as plain text, then ask for approval.
     <HARD-GATE>
     The brief MUST be plain text output in the model response.
-    The approval MUST be a SEPARATE user prompt tool call — not embedded in the
+    The approval MUST be a SEPARATE user prompt tool call â€” not embedded in the
     brief text. The prompt contains only: "Approve this Express brief to proceed?"
     These are two distinct actions: first emit the brief as text, then call the
     user prompt tool for approval. Do NOT combine them into one text block.
     </HARD-GATE>
 34. On approval, create session with workflow_mode: "express", exactly 1 phase.
-    On rejection, revise. On second rejection, escalate to Standard → step 10.
+    On rejection, revise. On second rejection, escalate to Standard â†’ step 10.
 35. Load agent-base-protocol and filesystem-safety-protocol. Prepend to delegation prompt.
 36. Delegate to the assigned agent.
     <HARD-GATE>

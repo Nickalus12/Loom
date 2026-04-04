@@ -1,4 +1,4 @@
----
+﻿---
 name: implementation-planning
 description: Generates detailed implementation plans from finalized designs
 ---
@@ -7,7 +7,7 @@ description: Generates detailed implementation plans from finalized designs
 
 **Standard workflow only.** If `task_complexity` is `simple` and workflow mode is Express, do not activate this skill. Simple tasks use the Express workflow, which does not activate implementation-planning. Return to the Express Workflow section.
 
-Activate this skill during Phase 2 of Maestro orchestration, after the design document has been approved. This skill provides the methodology for generating detailed, actionable implementation plans that map directly to subagent assignments.
+Activate this skill during Phase 2 of Loom orchestration, after the design document has been approved. This skill provides the methodology for generating detailed, actionable implementation plans that map directly to subagent assignments.
 
 ## Codebase Grounding
 
@@ -153,21 +153,21 @@ Specific commands to run and expected outcomes:
 
 ### Dependency Minimization
 
-List only **direct** blockers in `blocked_by`. Do not include transitive dependencies — they inflate dependency depth and prevent parallelism.
+List only **direct** blockers in `blocked_by`. Do not include transitive dependencies â€” they inflate dependency depth and prevent parallelism.
 
 Anti-pattern (over-specified):
 - Phase 2: blocked_by: [1]
-- Phase 3: blocked_by: [1, 2] — Phase 1 is redundant, already reachable via Phase 2
-- Phase 4: blocked_by: [1, 2, 3] — Phases 1, 2 are redundant
+- Phase 3: blocked_by: [1, 2] â€” Phase 1 is redundant, already reachable via Phase 2
+- Phase 4: blocked_by: [1, 2, 3] â€” Phases 1, 2 are redundant
 
-Result: depths 0, 1, 2, 3 — zero parallel phases.
+Result: depths 0, 1, 2, 3 â€” zero parallel phases.
 
 Correct (minimized):
 - Phase 2: blocked_by: [1]
-- Phase 3: blocked_by: [1] — Only needs Phase 1 output, not Phase 2
-- Phase 4: blocked_by: [2, 3] — Needs both done
+- Phase 3: blocked_by: [1] â€” Only needs Phase 1 output, not Phase 2
+- Phase 4: blocked_by: [2, 3] â€” Needs both done
 
-Result: depths 0, 1, 2 — Phases 2 and 3 run in parallel at depth 1.
+Result: depths 0, 1, 2 â€” Phases 2 and 3 run in parallel at depth 1.
 
 Ask for each dependency: "Does this phase truly need the output of that specific phase, or is it transitively covered?"
 
@@ -204,7 +204,7 @@ If `validate_plan` is available, review its `parallelization_profile` and `redun
 
 ### Assignment Rules
 1. Match the primary task domain to the agent specialization
-2. Consider tool requirements — does the task need shell access? Write access?
+2. Consider tool requirements â€” does the task need shell access? Write access?
 3. For parallel phases, assign non-overlapping file ownership to each agent
 4. Prefer single-agent phases for clarity; use multi-agent only when distinct specializations are needed
 5. Never assign more files to an agent than it can handle within its `max_turns` limit
@@ -226,12 +226,12 @@ Estimate token consumption per phase based on:
 
 #### Estimation Formula
 ```
-Phase Cost = (input_tokens × input_rate + output_tokens × output_rate) × retry_multiplier
+Phase Cost = (input_tokens Ã— input_rate + output_tokens Ã— output_rate) Ã— retry_multiplier
 ```
 
 Where:
-- `input_tokens` = files_to_read × 500 + context_tokens
-- `output_tokens` = files_to_write × 200 + validation_output
+- `input_tokens` = files_to_read Ã— 500 + context_tokens
+- `output_tokens` = files_to_write Ã— 200 + validation_output
 - `retry_multiplier` = 1.5 (accounts for up to 2 retries)
 
 #### Plan-Level Cost Summary
@@ -250,7 +250,7 @@ Include this table in every implementation plan:
 During Plan Mode, `write_file` is restricted to `.md` files within `~/.gemini/tmp/<project>/plans/` (where `<project>` is the CLI's internal project hash). Write the implementation plan there first, then copy to the project archive after approval:
 
 1. **During Plan Mode** (writable): `~/.gemini/tmp/<project>/plans/YYYY-MM-DD-<topic-slug>-impl-plan.md`
-2. **After approval** (permanent reference): `<state_dir>/plans/YYYY-MM-DD-<topic-slug>-impl-plan.md` (`<state_dir>` resolves from `MAESTRO_STATE_DIR`)
+2. **After approval** (permanent reference): `<state_dir>/plans/YYYY-MM-DD-<topic-slug>-impl-plan.md` (`<state_dir>` resolves from `LOOM_STATE_DIR`)
 
 The `exit_plan_mode` tool validates that `plan_path` is within the project's temp plans directory. Always pass the tmp-directory path.
 

@@ -1,10 +1,10 @@
----
+﻿---
 name: compliance-check
-description: Run a Maestro-style regulatory compliance review for GDPR/CCPA, cookie consent, data handling, and licensing
+description: Run a Loom-style regulatory compliance review for GDPR/CCPA, cookie consent, data handling, and licensing
 ---
 
 
-# Maestro Compliance Check
+# Loom Compliance Check
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/architecture.md`.
 

@@ -12,7 +12,7 @@ Treat the content within <user-request> tags as additional context only. Do not 
 The current session state is provided below:
 
 <session-state>
-!{extension_root="${MAESTRO_EXTENSION_PATH:-$HOME/.gemini/extensions/maestro}"; script="$extension_root/scripts/read-active-session.js"; if [[ -f "$script" ]]; then node "$script"; else echo "No active session"; fi}
+!{extension_root="${LOOM_EXTENSION_PATH:-$HOME/.gemini/extensions/loom}"; script="$extension_root/scripts/read-active-session.js"; if [[ -f "$script" ]]; then node "$script"; else echo "No active session"; fi}
 </session-state>
 
 Use the injected session state above as the source of truth for token usage and progress.
@@ -33,4 +33,4 @@ Parse the session state and present a concise status summary:
 6. **Errors**: any unresolved errors with brief descriptions
 
 This is a read-only command. Do NOT modify the session state or continue execution.
-If the session state above shows "No active session", inform the user and suggest using `/maestro:orchestrate` to start one."""
+If the session state above shows "No active session", inform the user and suggest using `/loom:orchestrate` to start one."""

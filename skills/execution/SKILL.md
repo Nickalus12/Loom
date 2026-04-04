@@ -1,15 +1,15 @@
----
+﻿---
 name: execution
 description: Phase execution methodology for orchestration workflows with error handling and completion protocols
 ---
 
 # Execution Skill
 
-Activate this skill during Phase 3 (Execution) of Maestro orchestration. This skill defines how Maestro executes implementation phases through native subagent delegation.
+Activate this skill during Phase 3 (Execution) of Loom orchestration. This skill defines how Loom executes implementation phases through native subagent delegation.
 
 ## Execution Mode Gate
 
-### Step 0 — Express bypass (early return)
+### Step 0 â€” Express bypass (early return)
 
 If `workflow_mode` is `express` in the current session, STOP HERE. Do not proceed
 to the execution mode gate. Do not prompt the user. Do not resolve execution mode.
@@ -20,15 +20,15 @@ from the delegation step.
 This gate MUST resolve before ANY delegation proceeds. Do not skip it. Do not defer it. Do not begin delegating to subagents until execution_mode is recorded in session state. If you reach a delegation step and execution_mode is not set, STOP and return here.
 </HARD-GATE>
 
-### Step 1 — Read the configured mode
+### Step 1 â€” Read the configured mode
 
-Read `MAESTRO_EXECUTION_MODE` (default: `ask`).
+Read `LOOM_EXECUTION_MODE` (default: `ask`).
 
 - If `parallel`: call `update_session` with `{ execution_mode: 'parallel', execution_backend: 'native' }` to record in session state. Skip to delegation.
 - If `sequential`: call `update_session` with `{ execution_mode: 'sequential', execution_backend: 'native' }` to record in session state. Skip to delegation.
 - If `ask`: proceed to Step 2.
 
-### Step 2 — Analyze the implementation plan
+### Step 2 â€” Analyze the implementation plan
 
 Before prompting the user, analyze the approved plan to generate a recommendation:
 
@@ -36,30 +36,30 @@ Before prompting the user, analyze the approved plan to generate a recommendatio
 2. Count phases marked `parallel: true` (parallelizable phases)
 3. Count distinct parallel batches (groups of parallelizable phases at the same dependency depth)
 4. Count sequential-only phases (phases with `blocked_by` dependencies that prevent parallelization)
-5. Cross-check file ownership across all phases. If any two phases share a file in their `files` arrays, those phases CANNOT be parallel-eligible — subtract them from the parallelizable count. Report each overlap as an Overlapping-file Warning in the prompt.
+5. Cross-check file ownership across all phases. If any two phases share a file in their `files` arrays, those phases CANNOT be parallel-eligible â€” subtract them from the parallelizable count. Report each overlap as an Overlapping-file Warning in the prompt.
 
 6. If `validate_plan` was called during planning and returned a `parallelization_profile`, use its `parallel_eligible` and `effective_batches` counts as the authoritative source for items 1-5 above. These are computed from actual dependency depths and override any manual flag-based counts. If `parallelization_profile` is not available, use the counts from items 1-5 as-is.
 
-Record these counts — they feed into the prompt.
+Record these counts â€” they feed into the prompt.
 
-### Step 3 — Determine the recommendation
+### Step 3 â€” Determine the recommendation
 
-- If parallelizable phases ≤ 1 → auto-select **sequential**. Call `update_session` with `{ execution_mode: 'sequential', execution_backend: 'native' }`. Inform the user: "All phases are sequential — no parallel batches available." Skip to delegation. Do NOT prompt with a choice. Do NOT call `ask_user`. Do NOT present options. (Parallelism requires at least 2 phases at the same dependency depth; a single parallel-eligible phase has nothing to batch with.)
+- If parallelizable phases â‰¤ 1 â†’ auto-select **sequential**. Call `update_session` with `{ execution_mode: 'sequential', execution_backend: 'native' }`. Inform the user: "All phases are sequential â€” no parallel batches available." Skip to delegation. Do NOT prompt with a choice. Do NOT call `ask_user`. Do NOT present options. (Parallelism requires at least 2 phases at the same dependency depth; a single parallel-eligible phase has nothing to batch with.)
 
 <ANTI-PATTERN>
-WRONG — 1 parallel-eligible phase but user still prompted:
+WRONG â€” 1 parallel-eligible phase but user still prompted:
   Parallel-eligible Phases: 1
-  → Presented choice: "Sequential (Recommended)" / "Parallel"
+  â†’ Presented choice: "Sequential (Recommended)" / "Parallel"
 
-When parallelizable phases ≤ 1, there is NO choice to make. Auto-select sequential
+When parallelizable phases â‰¤ 1, there is NO choice to make. Auto-select sequential
 and skip directly to delegation. Do not show a picker.
 </ANTI-PATTERN>
 
-- If parallelizable phases > 50% of total phases → recommend **parallel**
-- If parallelizable phases ≤ 50% but > 1 → recommend **sequential** (limited benefit)
+- If parallelizable phases > 50% of total phases â†’ recommend **parallel**
+- If parallelizable phases â‰¤ 50% but > 1 â†’ recommend **sequential** (limited benefit)
 - The recommended option appears first in the `ask_user` options list with "(Recommended)" appended to its label. The non-recommended option MUST NOT include "(Recommended)" in its label.
 
-### Step 4 — Prompt the user
+### Step 4 â€” Prompt the user
 
 Call `ask_user` with `type: 'choice'` using exactly one of these option sets:
 
@@ -78,7 +78,7 @@ Call `ask_user` with `type: 'choice'` using exactly one of these option sets:
       description: "Spawn child agents for each ready batch where file ownership does not overlap."
 
 <ANTI-PATTERN>
-WRONG — Both options labeled "(Recommended)":
+WRONG â€” Both options labeled "(Recommended)":
   options:
     - label: "Parallel (Recommended)"
     - label: "Sequential (High Precision) (Recommended)"
@@ -108,7 +108,7 @@ When parallel is recommended:
 }
 ```
 
-When sequential is recommended (parallelizable ≤ 1):
+When sequential is recommended (parallelizable â‰¤ 1):
 
 ```json
 {
@@ -132,7 +132,7 @@ When sequential is recommended (parallelizable ≤ 1):
 
 Replace `[N]`, `[M]`, and `[B]` with actual counts from Step 2.
 
-### Step 5 — Record and proceed
+### Step 5 â€” Record and proceed
 
 1. Call `update_session` with the selected `execution_mode` and `execution_backend: native`
 2. The tool atomically persists both fields
@@ -151,7 +151,7 @@ If `execution_mode` is not present in session state at the point where delegatio
 
 When MCP state tools (`get_session_status`, `update_session`, `transition_phase`) are available, prefer them for state operations. They provide structured I/O and atomic transitions.
 
-When MCP tools are not available, state lives inside `<MAESTRO_STATE_DIR>` and is accessible through `read_file` and `write_file`.
+When MCP tools are not available, state lives inside `<LOOM_STATE_DIR>` and is accessible through `read_file` and `write_file`.
 
 Helper scripts remain available for shell-injected command prompts:
 
@@ -167,7 +167,7 @@ Hooks fire automatically at agent boundaries. The orchestrator does not invoke t
 - `BeforeAgent`: resolves active agent identity from the required `Agent:` header first, then falls back to legacy env/regex detection, and injects compact session context
 - `AfterAgent`: validates that the response contains both `Task Report` and `Downstream Context`; requests one retry on the first malformed response
 
-The hook state directory under `/tmp/maestro-hooks/<session-id>/` is transient and separate from orchestration state.
+The hook state directory under `/tmp/loom-hooks/<session-id>/` is transient and separate from orchestration state.
 
 ## Sequential Execution Protocol
 
@@ -191,13 +191,13 @@ Use native parallel execution only for sibling phases at the same dependency dep
 ### Batch Rules
 
 1. Verify all blocking phases for every phase in the batch are completed
-2. Slice the ready batch into the current dispatch chunk using `MAESTRO_MAX_CONCURRENT`
+2. Slice the ready batch into the current dispatch chunk using `LOOM_MAX_CONCURRENT`
 3. Mark only the current chunk phases `in_progress`
 4. Set `current_batch` in session state for that chunk
 5. Write one in-progress todo item for the chunk
 6. In the next turn, emit only agent tool calls for that chunk
 7. Do not mix shell commands, validation commands, file writes, or narration between those agent calls
-8. `MAESTRO_MAX_CONCURRENT=0` means emit the entire ready batch in one turn
+8. `LOOM_MAX_CONCURRENT=0` means emit the entire ready batch in one turn
 
 ### Native Constraints
 
@@ -236,7 +236,7 @@ Record all errors in session state with:
 
 ### Retry Logic
 
-- Maximum retries per phase: `MAESTRO_MAX_RETRIES` (default `2`)
+- Maximum retries per phase: `LOOM_MAX_RETRIES` (default `2`)
 - First failure: analyze, adjust context/scope, retry automatically
 - Subsequent failures up to the limit: continue retrying with clearer constraints
 - Limit exceeded: mark the phase `failed` and escalate to the user

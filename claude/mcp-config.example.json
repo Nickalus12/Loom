@@ -1,9 +1,9 @@
-{
-  "maestro": {
+﻿{
+  "loom": {
     "command": "node",
     "args": [
-      "./mcp/maestro-server.js"
+      "./mcp/loom-server.js"
     ],
-    "cwd": "<path-to-maestro-plugin>"
+    "cwd": "<path-to-loom-plugin>"
   }
 }

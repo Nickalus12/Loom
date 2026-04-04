@@ -1,11 +1,11 @@
-# Maestro
+﻿# Loom
 
-[![Version](https://img.shields.io/badge/version-1.5.0-blue)](https://github.com/josstei/maestro-orchestrate/releases)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue)](https://github.com/Nickalus12/loom-orchestrate/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-extension-orange)](https://github.com/google-gemini/gemini-cli)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-blue)](https://docs.anthropic.com/en/docs/claude-code)
 
-Multi-agent development orchestration platform — 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands. Runs on both **Gemini CLI** and **Claude Code**.
+Multi-agent development orchestration platform â€” 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands. Runs on both **Gemini CLI** and **Claude Code**.
 
 ## Table of Contents
 
@@ -41,11 +41,11 @@ Multi-agent development orchestration platform — 22 specialists, 4-phase orche
 
 ## Overview
 
-Maestro is a multi-agent orchestration platform for **Gemini CLI** and **Claude Code**. Instead of a single AI session handling everything, Maestro delegates work to 22 specialized subagents -- each with its own context, tools, and expertise -- coordinated by a TechLead orchestrator. For simple tasks, Maestro uses an Express workflow that collapses design and planning into a single brief before executing. For medium and complex tasks, Maestro follows a structured 4-phase Standard workflow: Design, Plan, Execute, Complete.
+Loom is a multi-agent orchestration platform for **Gemini CLI** and **Claude Code**. Instead of a single AI session handling everything, Loom delegates work to 22 specialized subagents -- each with its own context, tools, and expertise -- coordinated by a TechLead orchestrator. For simple tasks, Loom uses an Express workflow that collapses design and planning into a single brief before executing. For medium and complex tasks, Loom follows a structured 4-phase Standard workflow: Design, Plan, Execute, Complete.
 
 The same orchestration engine, agents, and quality gates run on both platforms. Gemini CLI uses the extension at the repo root; Claude Code uses the plugin in the `claude/` subdirectory.
 
-Maestro classifies every task by complexity before choosing a workflow. Simple tasks (single concern, few files) get the Express path. Medium tasks (multi-component, clear boundaries) and complex tasks (cross-cutting, multi-service) enter the Standard path with full design dialogue, implementation planning, and phased execution across 22 agents spanning 8 editorial domains.
+Loom classifies every task by complexity before choosing a workflow. Simple tasks (single concern, few files) get the Express path. Medium tasks (multi-component, clear boundaries) and complex tasks (cross-cutting, multi-service) enter the Standard path with full design dialogue, implementation planning, and phased execution across 22 agents spanning 8 editorial domains.
 
 ## Features
 
@@ -64,7 +64,7 @@ Maestro classifies every task by complexity before choosing a workflow. Simple t
 
 ### Prerequisites
 
-**Gemini CLI** requires the experimental subagent system. Claude Code users can skip to [Installation](#installation) — subagents are available by default.
+**Gemini CLI** requires the experimental subagent system. Claude Code users can skip to [Installation](#installation) â€” subagents are available by default.
 
 Enable subagents in your Gemini CLI settings:
 
@@ -82,66 +82,66 @@ The `settings.json` file is located at:
 - **macOS/Linux**: `~/.gemini/settings.json`
 - **Windows**: `%USERPROFILE%\.gemini\settings.json`
 
-Maestro does not auto-edit `~/.gemini/settings.json`. Enable `experimental.enableAgents` manually before running orchestration commands.
+Loom does not auto-edit `~/.gemini/settings.json`. Enable `experimental.enableAgents` manually before running orchestration commands.
 
 ### Installation
 
 #### Gemini CLI
 
 ```bash
-gemini extensions install https://github.com/josstei/maestro-orchestrate
+gemini extensions install https://github.com/Nickalus12/loom-orchestrate
 ```
 
 Or for local development:
 
 ```bash
-git clone https://github.com/josstei/maestro-orchestrate
-cd maestro-orchestrate
+git clone https://github.com/Nickalus12/loom-orchestrate
+cd loom-orchestrate
 gemini extensions link .
 ```
 
-Verify: `gemini extensions list` should show `maestro`.
+Verify: `gemini extensions list` should show `loom`.
 
 #### Claude Code
 
 From Marketplace (recommended):
 
 ```bash
-claude plugin marketplace add josstei/maestro-orchestrate
-claude plugin install maestro@maestro-orchestrator --scope user
+claude plugin marketplace add Nickalus12/loom-orchestrate
+claude plugin install loom@loom-orchestrator --scope user
 ```
 
 Development / Testing:
 
 ```bash
-git clone https://github.com/josstei/maestro-orchestrate
-claude --plugin-dir /path/to/maestro-orchestrate/claude
+git clone https://github.com/Nickalus12/loom-orchestrate
+claude --plugin-dir /path/to/loom-orchestrate/claude
 ```
 
 Marketplace install is the persistent end-user path. The `--plugin-dir` flag loads the plugin for a single session and is intended for local development or temporary testing. The Claude Code plugin lives in the `claude/` subdirectory (not the repo root).
 
 For installation scopes and plugin management commands, see [claude/README.md](claude/README.md).
 
-Verify: agents appear with `maestro:` prefix (e.g., `maestro:coder`), and `/orchestrate`, `/review`, etc. appear in slash-command autocomplete.
+Verify: agents appear with `loom:` prefix (e.g., `loom:coder`), and `/orchestrate`, `/review`, etc. appear in slash-command autocomplete.
 
 #### Command Names By Runtime
 
-Gemini CLI exposes Maestro as `/maestro:*` commands. Claude Code exposes the same public entrypoints as top-level slash commands without the `maestro:` prefix.
+Gemini CLI exposes Loom as `/loom:*` commands. Claude Code exposes the same public entrypoints as top-level slash commands without the `loom:` prefix.
 
 | Workflow | Gemini CLI | Claude Code |
 |----------|------------|-------------|
-| Orchestrate | `/maestro:orchestrate` | `/orchestrate` |
-| Execute | `/maestro:execute` | `/execute` |
-| Resume | `/maestro:resume` | `/resume` |
-| Status | `/maestro:status` | `/status` |
-| Archive | `/maestro:archive` | `/archive` |
-| Review | `/maestro:review` | `/review` |
-| Debug | `/maestro:debug` | `/debug` |
-| Security Audit | `/maestro:security-audit` | `/security-audit` |
-| Performance Check | `/maestro:perf-check` | `/perf-check` |
-| SEO Audit | `/maestro:seo-audit` | `/seo-audit` |
-| Accessibility Audit | `/maestro:a11y-audit` | `/a11y-audit` |
-| Compliance Check | `/maestro:compliance-check` | `/compliance-check` |
+| Orchestrate | `/loom:orchestrate` | `/orchestrate` |
+| Execute | `/loom:execute` | `/execute` |
+| Resume | `/loom:resume` | `/resume` |
+| Status | `/loom:status` | `/status` |
+| Archive | `/loom:archive` | `/archive` |
+| Review | `/loom:review` | `/review` |
+| Debug | `/loom:debug` | `/debug` |
+| Security Audit | `/loom:security-audit` | `/security-audit` |
+| Performance Check | `/loom:perf-check` | `/perf-check` |
+| SEO Audit | `/loom:seo-audit` | `/seo-audit` |
+| Accessibility Audit | `/loom:a11y-audit` | `/a11y-audit` |
+| Compliance Check | `/loom:compliance-check` | `/compliance-check` |
 
 
 ### Quick Start
@@ -149,25 +149,25 @@ Gemini CLI exposes Maestro as `/maestro:*` commands. Claude Code exposes the sam
 Start a full orchestration by describing what you want to build:
 
 ```
-Gemini CLI:  /maestro:orchestrate Build a REST API for a task management system with user authentication
+Gemini CLI:  /loom:orchestrate Build a REST API for a task management system with user authentication
 Claude Code: /orchestrate Build a REST API for a task management system with user authentication
 ```
 
-Maestro will walk you through the complete lifecycle:
+Loom will walk you through the complete lifecycle:
 
-1. **Design Dialogue** -- Maestro asks structured questions one at a time (problem scope, constraints, technology preferences, quality requirements, deployment context) and presents 2-3 architectural approaches with trade-offs.
+1. **Design Dialogue** -- Loom asks structured questions one at a time (problem scope, constraints, technology preferences, quality requirements, deployment context) and presents 2-3 architectural approaches with trade-offs.
 2. **Design Review** -- The design document is presented section by section for your approval. Each section is 200-300 words covering requirements, architecture, component specs, team composition, risk assessment, and success criteria.
-3. **Implementation Planning** -- Maestro generates a detailed plan with phase breakdown, agent assignments, dependency graph, parallel execution opportunities, and validation criteria. You review and approve before execution begins.
+3. **Implementation Planning** -- Loom generates a detailed plan with phase breakdown, agent assignments, dependency graph, parallel execution opportunities, and validation criteria. You review and approve before execution begins.
 4. **Execution Mode Selection** -- Choose parallel dispatch (independent phases run concurrently as native subagents) or sequential delegation (one phase at a time with intervention opportunities).
 5. **Phase-by-Phase Execution** -- Specialized agents implement the plan. Session state is updated after each phase with files changed, validation results, and token usage.
 6. **Quality Gate** -- A final code review blocks completion on unresolved Critical or Major findings. The orchestrator remediates and re-validates until resolved.
-7. **Completion & Archival** -- Maestro delivers a summary of files changed, token usage by agent, deviations from plan, and recommended next steps. The session is archived automatically.
+7. **Completion & Archival** -- Loom delivers a summary of files changed, token usage by agent, deviations from plan, and recommended next steps. The session is archived automatically.
 
 
-**Express mode example** -- For straightforward tasks, Maestro detects low complexity and uses the Express workflow:
+**Express mode example** -- For straightforward tasks, Loom detects low complexity and uses the Express workflow:
 
 ```
-Gemini CLI:  /maestro:orchestrate Add a health check endpoint to the Express server
+Gemini CLI:  /loom:orchestrate Add a health check endpoint to the Express server
 Claude Code: /orchestrate Add a health check endpoint to the Express server
 ```
 
@@ -177,32 +177,32 @@ Express mode asks 1-2 clarifying questions, presents a structured brief for appr
 
 | Workflow | Gemini CLI | Claude Code | Purpose |
 |----------|------------|-------------|---------|
-| Orchestrate | `/maestro:orchestrate` | `/orchestrate` | Full orchestration workflow (design, plan, execute, complete) |
-| Execute | `/maestro:execute` | `/execute` | Execute an approved implementation plan, skipping design and planning |
-| Status | `/maestro:status` | `/status` | Display current session status without modifying state |
-| Resume | `/maestro:resume` | `/resume` | Resume an interrupted orchestration session |
-| Archive | `/maestro:archive` | `/archive` | Archive the active session and move artifacts to archive directories |
-| Review | `/maestro:review` | `/review` | Standalone code review with severity-classified findings |
-| Debug | `/maestro:debug` | `/debug` | Standalone debugging session with systematic root cause analysis |
-| Security Audit | `/maestro:security-audit` | `/security-audit` | Standalone security assessment (OWASP, threat modeling, data flow) |
-| Performance Check | `/maestro:perf-check` | `/perf-check` | Standalone performance analysis with optimization recommendations |
-| SEO Audit | `/maestro:seo-audit` | `/seo-audit` | Standalone SEO assessment (meta tags, structured data, crawlability) |
-| Accessibility Audit | `/maestro:a11y-audit` | `/a11y-audit` | Standalone accessibility audit (WCAG compliance, ARIA, keyboard navigation) |
-| Compliance Check | `/maestro:compliance-check` | `/compliance-check` | Standalone regulatory compliance review (GDPR/CCPA, licensing, data handling) |
+| Orchestrate | `/loom:orchestrate` | `/orchestrate` | Full orchestration workflow (design, plan, execute, complete) |
+| Execute | `/loom:execute` | `/execute` | Execute an approved implementation plan, skipping design and planning |
+| Status | `/loom:status` | `/status` | Display current session status without modifying state |
+| Resume | `/loom:resume` | `/resume` | Resume an interrupted orchestration session |
+| Archive | `/loom:archive` | `/archive` | Archive the active session and move artifacts to archive directories |
+| Review | `/loom:review` | `/review` | Standalone code review with severity-classified findings |
+| Debug | `/loom:debug` | `/debug` | Standalone debugging session with systematic root cause analysis |
+| Security Audit | `/loom:security-audit` | `/security-audit` | Standalone security assessment (OWASP, threat modeling, data flow) |
+| Performance Check | `/loom:perf-check` | `/perf-check` | Standalone performance analysis with optimization recommendations |
+| SEO Audit | `/loom:seo-audit` | `/seo-audit` | Standalone SEO assessment (meta tags, structured data, crawlability) |
+| Accessibility Audit | `/loom:a11y-audit` | `/a11y-audit` | Standalone accessibility audit (WCAG compliance, ARIA, keyboard navigation) |
+| Compliance Check | `/loom:compliance-check` | `/compliance-check` | Standalone regulatory compliance review (GDPR/CCPA, licensing, data handling) |
 
 
 ### Orchestration
 
 #### Orchestrate
 
-Initiates the full Maestro orchestration workflow. Maestro first classifies the task by complexity, then routes to the appropriate workflow.
+Initiates the full Loom orchestration workflow. Loom first classifies the task by complexity, then routes to the appropriate workflow.
 
 **Usage**:
-- Gemini CLI: `/maestro:orchestrate <task description>`
+- Gemini CLI: `/loom:orchestrate <task description>`
 - Claude Code: `/orchestrate <task description>`
 
 **Behavior**:
-1. Checks for existing active sessions in `<MAESTRO_STATE_DIR>/state/` (default: `docs/maestro/state/`)
+1. Checks for existing active sessions in `<LOOM_STATE_DIR>/state/` (default: `docs/loom/state/`)
 2. If an active session exists, offers to resume or archive it
 3. Classifies the task as `simple`, `medium`, or `complex`
 4. Routes to the appropriate workflow:
@@ -216,7 +216,7 @@ For Standard workflow, Phase 4 includes a final code reviewer quality gate that 
 Executes an existing implementation plan, skipping design and planning phases.
 
 **Usage**:
-- Gemini CLI: `/maestro:execute <path-to-implementation-plan>`
+- Gemini CLI: `/loom:execute <path-to-implementation-plan>`
 - Claude Code: `/execute <path-to-implementation-plan>`
 
 **Behavior**:
@@ -233,11 +233,11 @@ Executes an existing implementation plan, skipping design and planning phases.
 Resumes an interrupted orchestration session.
 
 **Usage**:
-- Gemini CLI: `/maestro:resume`
+- Gemini CLI: `/loom:resume`
 - Claude Code: `/resume`
 
 **Behavior**:
-1. Reads active session state from `<MAESTRO_STATE_DIR>/state/active-session.md`
+1. Reads active session state from `<LOOM_STATE_DIR>/state/active-session.md`
 2. Parses session metadata and phase statuses
 3. Presents a status summary with completed/pending/failed phases
 4. If errors exist from the previous run, presents them and asks for guidance
@@ -251,7 +251,7 @@ Resumes an interrupted orchestration session.
 Runs a standalone code review on staged changes, last commit, or specified paths.
 
 **Usage**:
-- Gemini CLI: `/maestro:review [file paths or glob patterns]`
+- Gemini CLI: `/loom:review [file paths or glob patterns]`
 - Claude Code: `/review [file paths or glob patterns]`
 
 **Behavior**:
@@ -266,7 +266,7 @@ Runs a standalone code review on staged changes, last commit, or specified paths
 Focused debugging session to investigate and diagnose an issue.
 
 **Usage**:
-- Gemini CLI: `/maestro:debug <issue description>`
+- Gemini CLI: `/loom:debug <issue description>`
 - Claude Code: `/debug <issue description>`
 
 **Behavior**:
@@ -279,7 +279,7 @@ Focused debugging session to investigate and diagnose an issue.
 Runs a security assessment on the specified scope.
 
 **Usage**:
-- Gemini CLI: `/maestro:security-audit <scope>`
+- Gemini CLI: `/loom:security-audit <scope>`
 - Claude Code: `/security-audit <scope>`
 
 **Behavior**:
@@ -292,7 +292,7 @@ Runs a security assessment on the specified scope.
 Runs a performance analysis on the specified scope.
 
 **Usage**:
-- Gemini CLI: `/maestro:perf-check <scope>`
+- Gemini CLI: `/loom:perf-check <scope>`
 - Claude Code: `/perf-check <scope>`
 
 **Behavior**:
@@ -305,7 +305,7 @@ Runs a performance analysis on the specified scope.
 Runs a technical SEO assessment on web-facing deliverables.
 
 **Usage**:
-- Gemini CLI: `/maestro:seo-audit <scope>`
+- Gemini CLI: `/loom:seo-audit <scope>`
 - Claude Code: `/seo-audit <scope>`
 
 **Behavior**:
@@ -318,7 +318,7 @@ Runs a technical SEO assessment on web-facing deliverables.
 Runs a WCAG accessibility audit on user-facing components.
 
 **Usage**:
-- Gemini CLI: `/maestro:a11y-audit <scope>`
+- Gemini CLI: `/loom:a11y-audit <scope>`
 - Claude Code: `/a11y-audit <scope>`
 
 **Behavior**:
@@ -331,7 +331,7 @@ Runs a WCAG accessibility audit on user-facing components.
 Runs a regulatory compliance review on the specified scope.
 
 **Usage**:
-- Gemini CLI: `/maestro:compliance-check <scope>`
+- Gemini CLI: `/loom:compliance-check <scope>`
 - Claude Code: `/compliance-check <scope>`
 
 **Behavior**:
@@ -346,7 +346,7 @@ Runs a regulatory compliance review on the specified scope.
 Displays the current orchestration session status.
 
 **Usage**:
-- Gemini CLI: `/maestro:status`
+- Gemini CLI: `/loom:status`
 - Claude Code: `/status`
 
 **Behavior**:
@@ -359,7 +359,7 @@ Displays the current orchestration session status.
 Archives the current active orchestration session.
 
 **Usage**:
-- Gemini CLI: `/maestro:archive`
+- Gemini CLI: `/loom:archive`
 - Claude Code: `/archive`
 
 **Behavior**:
@@ -373,28 +373,28 @@ Archives the current active orchestration session.
 
 ### Environment Variables
 
-Maestro works out of the box with sensible defaults. To customize behavior, set any of these environment variables in your shell profile or project `.env` file:
+Loom works out of the box with sensible defaults. To customize behavior, set any of these environment variables in your shell profile or project `.env` file:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MAESTRO_DISABLED_AGENTS` | _(none)_ | Comma-separated list of agent names to exclude from implementation planning |
-| `MAESTRO_MAX_RETRIES` | `2` | Maximum retry attempts per phase before escalating to the user |
-| `MAESTRO_AUTO_ARCHIVE` | `true` | Automatically archive session state on successful completion |
-| `MAESTRO_VALIDATION_STRICTNESS` | `normal` | Post-phase validation strictness level (`strict`, `normal`, or `lenient`) |
-| `MAESTRO_STATE_DIR` | `docs/maestro` | Base directory for session state and plans |
-| `MAESTRO_MAX_CONCURRENT` | `0` | Maximum subagents emitted in one native parallel batch turn (`0` = dispatch the entire ready batch) |
-| `MAESTRO_EXECUTION_MODE` | `ask` | Phase 3 execution mode: `parallel` (native concurrent subagents), `sequential` (one at a time), or `ask` (prompt each time) |
+| `LOOM_DISABLED_AGENTS` | _(none)_ | Comma-separated list of agent names to exclude from implementation planning |
+| `LOOM_MAX_RETRIES` | `2` | Maximum retry attempts per phase before escalating to the user |
+| `LOOM_AUTO_ARCHIVE` | `true` | Automatically archive session state on successful completion |
+| `LOOM_VALIDATION_STRICTNESS` | `normal` | Post-phase validation strictness level (`strict`, `normal`, or `lenient`) |
+| `LOOM_STATE_DIR` | `docs/loom` | Base directory for session state and plans |
+| `LOOM_MAX_CONCURRENT` | `0` | Maximum subagents emitted in one native parallel batch turn (`0` = dispatch the entire ready batch) |
+| `LOOM_EXECUTION_MODE` | `ask` | Phase 3 execution mode: `parallel` (native concurrent subagents), `sequential` (one at a time), or `ask` (prompt each time) |
 
 
 All settings are optional. The orchestrator uses the defaults shown above when a variable is not set.
 
 Setting resolution precedence: exported env var > workspace `.env` > extension `.env` > default.
 
-Gemini CLI only: you can configure extension-scoped settings interactively with `gemini extensions config maestro`.
+Gemini CLI only: you can configure extension-scoped settings interactively with `gemini extensions config loom`.
 
 ### Hooks
 
-Maestro uses lifecycle hooks for active-agent tracking, session context injection, and handoff validation. Hook events differ between runtimes:
+Loom uses lifecycle hooks for active-agent tracking, session context injection, and handoff validation. Hook events differ between runtimes:
 
 **Gemini CLI** (`hooks/hooks.json`):
 
@@ -411,10 +411,10 @@ Maestro uses lifecycle hooks for active-agent tracking, session context injectio
 |------|---------|
 | SessionStart | Prune stale sessions, initialize hook state |
 | PreToolUse (Agent) | Track active agent identity, inject session context |
-| PreToolUse (Bash) | Policy enforcement — block destructive shell commands |
+| PreToolUse (Bash) | Policy enforcement â€” block destructive shell commands |
 | SessionEnd | Clean up hook state for ended session |
 
-Both runtimes share the same business logic in `lib/hooks/` — only the I/O adapters differ.
+Both runtimes share the same business logic in `lib/hooks/` â€” only the I/O adapters differ.
 
 ## Architecture
 
@@ -460,17 +460,17 @@ flowchart TD
 
 ### Component Model
 
-Maestro is built from seven primary layers plus shared resources (MCP server, templates, references). See ARCHITECTURE.md for the full nine-layer technical model. The Gemini CLI layout is at repo root; Claude Code mirrors it in `claude/` with platform-specific adaptations.
+Loom is built from seven primary layers plus shared resources (MCP server, templates, references). See ARCHITECTURE.md for the full nine-layer technical model. The Gemini CLI layout is at repo root; Claude Code mirrors it in `claude/` with platform-specific adaptations.
 
 | Layer | Gemini Directory | Claude Directory | Purpose |
 |-------|-----------------|-----------------|---------|
 | **Orchestrator** | `GEMINI.md` | `claude/skills/orchestrate/SKILL.md` | TechLead persona, workflow routing, phase transitions, delegation rules |
-| **Commands** | `commands/maestro/*.toml` | `claude/skills/*/SKILL.md` | Gemini uses TOML slash-command files; Claude exposes public skills as slash commands |
+| **Commands** | `commands/loom/*.toml` | `claude/skills/*/SKILL.md` | Gemini uses TOML slash-command files; Claude exposes public skills as slash commands |
 | **Agents** | `agents/*.md` | `claude/agents/*.md` | 22 subagent persona definitions with tool permissions and model config |
 | **Skills** | `skills/*/SKILL.md` | `claude/skills/*/SKILL.md` | Reusable methodology modules with embedded protocols |
 | **Scripts** | `scripts/*.js` | `claude/scripts/*.js` | Execution infrastructure (workspace setup, state management, hook adapters) |
 | **Hooks** | `hooks/hooks.json` | `claude/hooks/claude-hooks.json` | Lifecycle middleware for agent tracking and session context injection |
-| **Policies** | `policies/maestro.toml` | `claude/scripts/policy-enforcer.js` | Safety rails for deny/ask tool access rules |
+| **Policies** | `policies/loom.toml` | `claude/scripts/policy-enforcer.js` | Safety rails for deny/ask tool access rules |
 
 Shared resources (`lib/`, `mcp/`, `templates/`, `references/`) are at repo root and copied into `claude/`.
 
@@ -478,7 +478,7 @@ Shared resources (`lib/`, `mcp/`, `templates/`, `references/`) are at repo root 
 
 #### Complexity Classification
 
-Before entering any workflow, Maestro classifies the task as `simple`, `medium`, or `complex` using heuristics based on scope, example patterns, and codebase size. The classification controls workflow selection and, for Standard workflow, design depth, question coverage, section count, phase limits, and domain analysis scope.
+Before entering any workflow, Loom classifies the task as `simple`, `medium`, or `complex` using heuristics based on scope, example patterns, and codebase size. The classification controls workflow selection and, for Standard workflow, design depth, question coverage, section count, phase limits, and domain analysis scope.
 
 | Signal | Simple | Medium | Complex |
 |--------|--------|--------|---------|
@@ -524,22 +524,22 @@ With plan approval, the TechLead:
 - For parallel: dispatches independent phases as native subagent batches with non-overlapping file ownership
 - For sequential: delegates one phase at a time in dependency order
 - Updates session state after each phase or batch completion
-- Runs post-phase validation (build, lint, tests) based on `MAESTRO_VALIDATION_STRICTNESS`
-- Handles errors with up to `MAESTRO_MAX_RETRIES` automatic retries before escalating
+- Runs post-phase validation (build, lint, tests) based on `LOOM_VALIDATION_STRICTNESS`
+- Handles errors with up to `LOOM_MAX_RETRIES` automatic retries before escalating
 
 #### Standard Workflow Phase 4: Completion
 
 After all phases complete:
 - Final code reviewer quality gate -- blocks completion on unresolved Critical/Major findings; remediates, re-validates, and re-reviews until resolved
 - Session state marked as completed
-- Plans and state files archived to `archive/` subdirectories (respecting `MAESTRO_AUTO_ARCHIVE`)
+- Plans and state files archived to `archive/` subdirectories (respecting `LOOM_AUTO_ARCHIVE`)
 - Summary delivered with files changed, token usage, and next steps
 
 ## Agents
 
 ### Agent Roster
 
-Maestro coordinates 22 specialized subagents across 8 editorial domains:
+Loom coordinates 22 specialized subagents across 8 editorial domains:
 
 All agents share a baseline read/search/question capability set. The tool tiers below summarize effective access levels across runtimes rather than listing literal tool IDs.
 
@@ -622,11 +622,11 @@ flowchart LR
 
 ## Skills
 
-Maestro uses skills to encapsulate detailed methodologies that are loaded on demand, keeping the base context lean. During orchestration on Gemini CLI, methodology skills are loaded via `activate_skill` (masking-exempt, expands workspace access), while templates, references, and protocols are loaded via the `get_skill_content` MCP tool. On Claude Code, all resources are loaded via the native `Read` tool. Express workflow loads only delegation protocols (`agent-base-protocol`, `filesystem-safety-protocol`) and the `code-review` skill — it does not use the full methodology skills.
+Loom uses skills to encapsulate detailed methodologies that are loaded on demand, keeping the base context lean. During orchestration on Gemini CLI, methodology skills are loaded via `activate_skill` (masking-exempt, expands workspace access), while templates, references, and protocols are loaded via the `get_skill_content` MCP tool. On Claude Code, all resources are loaded via the native `Read` tool. Express workflow loads only delegation protocols (`agent-base-protocol`, `filesystem-safety-protocol`) and the `code-review` skill â€” it does not use the full methodology skills.
 
-The orchestrate command's step sequence lives in `references/orchestration-steps.md` — a shared reference file loaded by both runtimes as the sole procedural authority.
+The orchestrate command's step sequence lives in `references/orchestration-steps.md` â€” a shared reference file loaded by both runtimes as the sole procedural authority.
 
-In the table below, command names are shown in runtime-neutral form. Gemini CLI prefixes them with `/maestro:`; Claude Code uses the same names without that prefix.
+In the table below, command names are shown in runtime-neutral form. Gemini CLI prefixes them with `/loom:`; Claude Code uses the same names without that prefix.
 
 | Skill | Purpose | Used By |
 |-------|---------|---------|
@@ -640,7 +640,7 @@ In the table below, command names are shown in runtime-neutral form. Gemini CLI 
 
 ## Parallel Execution
 
-Maestro uses the active runtime's native subagent scheduler for parallel execution, enabling independent implementation phases to run concurrently instead of sequentially.
+Loom uses the active runtime's native subagent scheduler for parallel execution, enabling independent implementation phases to run concurrently instead of sequentially.
 
 ### How It Works
 
@@ -648,7 +648,7 @@ The TechLead orchestrator identifies phases at the same dependency depth with no
 
 **Dispatch flow:**
 1. The orchestrator identifies the ready batch from the approved implementation plan
-2. Slices the batch using `MAESTRO_MAX_CONCURRENT` (`0` means dispatch the entire ready batch in one turn)
+2. Slices the batch using `LOOM_MAX_CONCURRENT` (`0` means dispatch the entire ready batch in one turn)
 3. Marks the current chunk `in_progress` in session state and sets `current_batch`
 4. Emits contiguous subagent tool calls for the chunk (agent calls only, no mixed operations)
 5. Each delegation prompt includes required headers (`Agent:`, `Phase:`, `Batch:`, `Session:`) and injected protocols
@@ -664,7 +664,7 @@ The TechLead orchestrator identifies phases at the same dependency depth with no
 | Fully self-contained delegation prompts | Single-phase execution |
 | Well-defined tasks with clear boundaries | Fallback when parallel execution stalls |
 
-The execution mode gate analyzes the implementation plan and recommends a mode based on the ratio of parallelizable phases to total phases. When `MAESTRO_EXECUTION_MODE` is set to `ask` (default), the user is prompted with this recommendation. Setting it to `parallel` or `sequential` bypasses the prompt.
+The execution mode gate analyzes the implementation plan and recommends a mode based on the ratio of parallelizable phases to total phases. When `LOOM_EXECUTION_MODE` is set to `ask` (default), the user is prompted with this recommendation. Setting it to `parallel` or `sequential` bypasses the prompt.
 
 ### Constraints
 
@@ -676,21 +676,21 @@ The execution mode gate analyzes the implementation plan and recommends a mode b
 
 ## Session State & Project Output
 
-Maestro creates the following directories in your project:
+Loom creates the following directories in your project:
 
 ```
 <your-project>/
-└── docs/maestro/
-    ├── plans/                          # Active design docs and implementation plans
-    │   ├── archive/                    # Completed plans
-    │   ├── YYYY-MM-DD-<topic>-design.md
-    │   └── YYYY-MM-DD-<topic>-impl-plan.md
-    └── state/                          # Session tracking
-        ├── archive/                    # Completed sessions
-        └── active-session.md           # Current orchestration state
+â””â”€â”€ docs/loom/
+    â”œâ”€â”€ plans/                          # Active design docs and implementation plans
+    â”‚   â”œâ”€â”€ archive/                    # Completed plans
+    â”‚   â”œâ”€â”€ YYYY-MM-DD-<topic>-design.md
+    â”‚   â””â”€â”€ YYYY-MM-DD-<topic>-impl-plan.md
+    â””â”€â”€ state/                          # Session tracking
+        â”œâ”€â”€ archive/                    # Completed sessions
+        â””â”€â”€ active-session.md           # Current orchestration state
 ```
 
-Maestro tracks orchestration progress in `<MAESTRO_STATE_DIR>/state/active-session.md` (default: `docs/maestro/state/active-session.md`) with:
+Loom tracks orchestration progress in `<LOOM_STATE_DIR>/state/active-session.md` (default: `docs/loom/state/active-session.md`) with:
 
 - **Phase status tracking**: pending, in_progress, completed, failed, skipped
 - **File manifest**: Files created, modified, and deleted per phase
@@ -706,17 +706,17 @@ Express sessions have `workflow_mode: "express"` with `design_document: null` an
 
 ## Documentation
 
-- **[Usage Guide](USAGE.md)** -- Comprehensive guide to installing, configuring, and using Maestro
-- **[System Overview](OVERVIEW.md)** -- High-level explanation of how Maestro works, its agent system, and execution model
-- **[Architecture](ARCHITECTURE.md)** — Runtime internals: hooks, MCP server, file formats, policies, and extension/plugin manifest
-- **[Claude Code Plugin](claude/README.md)** — Claude Code-specific setup, commands, agent naming, and MCP tool mapping
+- **[Usage Guide](USAGE.md)** -- Comprehensive guide to installing, configuring, and using Loom
+- **[System Overview](OVERVIEW.md)** -- High-level explanation of how Loom works, its agent system, and execution model
+- **[Architecture](ARCHITECTURE.md)** â€” Runtime internals: hooks, MCP server, file formats, policies, and extension/plugin manifest
+- **[Claude Code Plugin](claude/README.md)** â€” Claude Code-specific setup, commands, agent naming, and MCP tool mapping
 
 ## Troubleshooting
 
 ### Runtime Not Loading
 
 1. Gemini CLI: verify the extension is linked with `gemini extensions list`
-2. Claude Code: start a fresh session with `claude --plugin-dir /path/to/maestro-orchestrate/claude`
+2. Claude Code: start a fresh session with `claude --plugin-dir /path/to/loom-orchestrate/claude`
 3. Check that the runtime manifest exists: `gemini-extension.json` for Gemini CLI, `claude/.claude-plugin/plugin.json` for Claude Code
 
 ### Subagents Not Enabled (Gemini CLI Only)
@@ -725,13 +725,13 @@ Express sessions have `workflow_mode: "express"` with `design_document: null` an
 2. If the file does not exist, create it with the `experimental` section
 3. Restart Gemini CLI after updating settings
 
-Maestro does not auto-edit `~/.gemini/settings.json`; enable `experimental.enableAgents` manually.
+Loom does not auto-edit `~/.gemini/settings.json`; enable `experimental.enableAgents` manually.
 
 ### Session State Corrupted
 
-1. Check the YAML frontmatter in `<MAESTRO_STATE_DIR>/state/active-session.md` for syntax errors (unmatched quotes, invalid indentation)
+1. Check the YAML frontmatter in `<LOOM_STATE_DIR>/state/active-session.md` for syntax errors (unmatched quotes, invalid indentation)
 2. **Manual Fix**: Edit the file to fix YAML syntax
-3. **Archive and Restart**: use Gemini CLI `/maestro:archive` or Claude Code `/archive`, then start fresh with Gemini CLI `/maestro:orchestrate` or Claude Code `/orchestrate`
+3. **Archive and Restart**: use Gemini CLI `/loom:archive` or Claude Code `/archive`, then start fresh with Gemini CLI `/loom:orchestrate` or Claude Code `/orchestrate`
 4. **Delete State**: Remove `active-session.md` and start fresh (loses progress)
 
 ### Parallel Execution Issues
@@ -742,40 +742,40 @@ Maestro does not auto-edit `~/.gemini/settings.json`; enable `experimental.enabl
 - Check whether an agent asked a follow-up question that paused the batch
 
 **Reducing batch problems:**
-- Reduce batch size: `export MAESTRO_MAX_CONCURRENT=1`
-- Fall back to sequential mode: `export MAESTRO_EXECUTION_MODE=sequential`
-- Resume after tightening the plan: Gemini CLI `/maestro:resume` or Claude Code `/resume`
+- Reduce batch size: `export LOOM_MAX_CONCURRENT=1`
+- Fall back to sequential mode: `export LOOM_EXECUTION_MODE=sequential`
+- Resume after tightening the plan: Gemini CLI `/loom:resume` or Claude Code `/resume`
 
 ### Validation Failures
 
 1. Check session state for validation error logs
 2. Common causes: lint errors, test failures, build errors
-3. Manually fix the issue, then rerun resume: Gemini CLI `/maestro:resume` or Claude Code `/resume`
-4. Adjust strictness if needed: `export MAESTRO_VALIDATION_STRICTNESS=lenient`
+3. Manually fix the issue, then rerun resume: Gemini CLI `/loom:resume` or Claude Code `/resume`
+4. Adjust strictness if needed: `export LOOM_VALIDATION_STRICTNESS=lenient`
 
 ### File Conflicts
 
 1. Multiple agents tried to modify the same file during parallel execution
-2. Maestro will stop and report conflict details
+2. Loom will stop and report conflict details
 3. Manually resolve conflicts
-4. Resume with sequential mode: `export MAESTRO_EXECUTION_MODE=sequential`, then use Gemini CLI `/maestro:resume` or Claude Code `/resume`
+4. Resume with sequential mode: `export LOOM_EXECUTION_MODE=sequential`, then use Gemini CLI `/loom:resume` or Claude Code `/resume`
 
 ### Cannot Find Active Session
 
-1. Check if `active-session.md` exists under your configured state directory (`docs/maestro/state/` by default)
-2. If the file is in archive, start fresh with Gemini CLI `/maestro:orchestrate` or Claude Code `/orchestrate`
-3. Check `MAESTRO_STATE_DIR` if you have customized it: `echo $MAESTRO_STATE_DIR`
+1. Check if `active-session.md` exists under your configured state directory (`docs/loom/state/` by default)
+2. If the file is in archive, start fresh with Gemini CLI `/loom:orchestrate` or Claude Code `/orchestrate`
+3. Check `LOOM_STATE_DIR` if you have customized it: `echo $LOOM_STATE_DIR`
 
 ### Getting Help
 
 If you encounter issues not covered here:
 
-1. Review session state logs in `<MAESTRO_STATE_DIR>/state/active-session.md`
-2. Check Maestro version in the runtime you are using: `gemini extensions list` for Gemini CLI, or inspect the loaded plugin metadata for Claude Code
+1. Review session state logs in `<LOOM_STATE_DIR>/state/active-session.md`
+2. Check Loom version in the runtime you are using: `gemini extensions list` for Gemini CLI, or inspect the loaded plugin metadata for Claude Code
 3. Review runtime logs for the environment where the issue occurs
-4. Report issues on GitHub: [https://github.com/josstei/maestro-orchestrate/issues](https://github.com/josstei/maestro-orchestrate/issues)
+4. Report issues on GitHub: [https://github.com/Nickalus12/loom-orchestrate/issues](https://github.com/Nickalus12/loom-orchestrate/issues)
 
-Include: Maestro version, runtime (`Gemini CLI` or `Claude Code`) and version, session state file (redact sensitive data), error messages, and steps to reproduce.
+Include: Loom version, runtime (`Gemini CLI` or `Claude Code`) and version, session state file (redact sensitive data), error messages, and steps to reproduce.
 
 ## License
 

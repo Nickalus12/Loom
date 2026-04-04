@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 
 # Build output
@@ -43,7 +43,7 @@ coverage/
 tmp/
 temp/
 
-# Maestro session state (may contain user task descriptions)
-docs/maestro/state/
+# Loom session state (may contain user task descriptions)
+docs/loom/state/
 
 hooks/permissions.json

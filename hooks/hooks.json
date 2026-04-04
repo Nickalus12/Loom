@@ -1,4 +1,4 @@
-{
+﻿{
   "hooks": {
     "SessionStart": [
       {
@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "node ${extensionPath}/hooks/session-start.js",
-            "name": "maestro-session-start",
+            "name": "loom-session-start",
             "description": "Initialize hook state and prune stale sessions",
             "timeout": 10000
           }
@@ -19,7 +19,7 @@
           {
             "type": "command",
             "command": "node ${extensionPath}/hooks/before-agent.js",
-            "name": "maestro-before-agent",
+            "name": "loom-before-agent",
             "description": "Inject session context into agent turns",
             "timeout": 10000
           }
@@ -32,7 +32,7 @@
           {
             "type": "command",
             "command": "node ${extensionPath}/hooks/after-agent.js",
-            "name": "maestro-after-agent",
+            "name": "loom-after-agent",
             "description": "Validate handoff report format with retry on malformed output",
             "timeout": 10000
           }
@@ -45,7 +45,7 @@
           {
             "type": "command",
             "command": "node ${extensionPath}/hooks/session-end.js",
-            "name": "maestro-session-end",
+            "name": "loom-session-end",
             "description": "Clean up hook state for ended session",
             "timeout": 10000
           }

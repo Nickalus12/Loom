@@ -1,23 +1,23 @@
-{
-  "name": "maestro-orchestrator",
+﻿{
+  "name": "loom-orchestrator",
   "owner": {
-    "name": "josstei"
+    "name": "Nickalus12"
   },
   "metadata": {
-    "description": "Maestro multi-agent orchestration platform for Claude Code",
+    "description": "Loom multi-agent orchestration platform for Claude Code",
     "version": "1.5.0"
   },
   "plugins": [
     {
-      "name": "maestro",
+      "name": "loom",
       "source": "./claude",
-      "description": "Multi-agent development orchestration platform — 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands",
+      "description": "Multi-agent development orchestration platform â€” 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands",
       "version": "1.5.0",
       "author": {
-        "name": "josstei"
+        "name": "Nickalus12"
       },
-      "homepage": "https://github.com/josstei/maestro-orchestrate",
-      "repository": "https://github.com/josstei/maestro-orchestrate",
+      "homepage": "https://github.com/Nickalus12/loom-orchestrate",
+      "repository": "https://github.com/Nickalus12/loom-orchestrate",
       "license": "Apache-2.0",
       "keywords": [
         "orchestration",

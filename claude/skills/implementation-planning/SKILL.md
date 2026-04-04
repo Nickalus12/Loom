@@ -1,4 +1,4 @@
----
+﻿---
 name: implementation-planning
 description: Generates detailed implementation plans from finalized designs
 user-invocable: false
@@ -8,7 +8,7 @@ user-invocable: false
 
 **Standard workflow only.** If `task_complexity` is `simple` and workflow mode is Express, do not activate this skill. Simple tasks use the Express workflow, which does not activate implementation-planning. Return to the Express Workflow section.
 
-Activate this skill during Phase 2 of Maestro orchestration, after the design document has been approved. This skill provides the methodology for generating detailed, actionable implementation plans that map directly to subagent assignments.
+Activate this skill during Phase 2 of Loom orchestration, after the design document has been approved. This skill provides the methodology for generating detailed, actionable implementation plans that map directly to subagent assignments.
 
 ## Codebase Grounding
 
@@ -154,21 +154,21 @@ Specific commands to run and expected outcomes:
 
 ### Dependency Minimization
 
-List only **direct** blockers in `blocked_by`. Do not include transitive dependencies — they inflate dependency depth and prevent parallelism.
+List only **direct** blockers in `blocked_by`. Do not include transitive dependencies â€” they inflate dependency depth and prevent parallelism.
 
 Anti-pattern (over-specified):
 - Phase 2: blocked_by: [1]
-- Phase 3: blocked_by: [1, 2] — Phase 1 is redundant, already reachable via Phase 2
-- Phase 4: blocked_by: [1, 2, 3] — Phases 1, 2 are redundant
+- Phase 3: blocked_by: [1, 2] â€” Phase 1 is redundant, already reachable via Phase 2
+- Phase 4: blocked_by: [1, 2, 3] â€” Phases 1, 2 are redundant
 
-Result: depths 0, 1, 2, 3 — zero parallel phases.
+Result: depths 0, 1, 2, 3 â€” zero parallel phases.
 
 Correct (minimized):
 - Phase 2: blocked_by: [1]
-- Phase 3: blocked_by: [1] — Only needs Phase 1 output, not Phase 2
-- Phase 4: blocked_by: [2, 3] — Needs both done
+- Phase 3: blocked_by: [1] â€” Only needs Phase 1 output, not Phase 2
+- Phase 4: blocked_by: [2, 3] â€” Needs both done
 
-Result: depths 0, 1, 2 — Phases 2 and 3 run in parallel at depth 1.
+Result: depths 0, 1, 2 â€” Phases 2 and 3 run in parallel at depth 1.
 
 Ask for each dependency: "Does this phase truly need the output of that specific phase, or is it transitively covered?"
 
@@ -205,7 +205,7 @@ If `validate_plan` is available, review its `parallelization_profile` and `redun
 
 ### Assignment Rules
 1. Match the primary task domain to the agent specialization
-2. Consider tool requirements — does the task need shell access? Write access?
+2. Consider tool requirements â€” does the task need shell access? Write access?
 3. For parallel phases, assign non-overlapping file ownership to each agent
 4. Prefer single-agent phases for clarity; use multi-agent only when distinct specializations are needed
 5. Never assign more files to an agent than it can handle within its `max_turns` limit
@@ -227,12 +227,12 @@ Estimate token consumption per phase based on:
 
 #### Estimation Formula
 ```
-Phase Cost = (input_tokens × input_rate + output_tokens × output_rate) × retry_multiplier
+Phase Cost = (input_tokens Ã— input_rate + output_tokens Ã— output_rate) Ã— retry_multiplier
 ```
 
 Where:
-- `input_tokens` = files_to_read × 500 + context_tokens
-- `output_tokens` = files_to_write × 200 + validation_output
+- `input_tokens` = files_to_read Ã— 500 + context_tokens
+- `output_tokens` = files_to_write Ã— 200 + validation_output
 - `retry_multiplier` = 1.5 (accounts for up to 2 retries)
 
 #### Plan-Level Cost Summary
@@ -250,9 +250,9 @@ Include this table in every implementation plan:
 
 Write the implementation plan directly to the project's plans directory:
 
-`docs/maestro/plans/YYYY-MM-DD-<topic-slug>-impl-plan.md`
+`docs/loom/plans/YYYY-MM-DD-<topic-slug>-impl-plan.md`
 
-The path resolves from `MAESTRO_STATE_DIR` (default: `docs/maestro`). If Plan Mode is active, call `ExitPlanMode` with the plan path after approval. Unlike Gemini CLI (which uses a temporary staging directory), Claude Code writes directly to the final location.
+The path resolves from `LOOM_STATE_DIR` (default: `docs/loom`). If Plan Mode is active, call `ExitPlanMode` with the plan path after approval. Unlike Gemini CLI (which uses a temporary staging directory), Claude Code writes directly to the final location.
 
 ### Document Structure
 Use the implementation plan template from `templates/implementation-plan.md`.
@@ -295,7 +295,7 @@ After writing the implementation plan:
 2. Present the dependency graph and execution strategy
 3. Highlight parallel execution opportunities
 4. Provide token budget estimates
-5. Call `ExitPlanMode` with `plan_path` set to the tmp-directory path (`docs/maestro/plans/...`) to present the plan for user approval
-6. After approval, copy the plan to `docs/maestro/plans/YYYY-MM-DD-<slug>-impl-plan.md` as a permanent project reference
+5. Call `ExitPlanMode` with `plan_path` set to the tmp-directory path (`docs/loom/plans/...`) to present the plan for user approval
+6. After approval, copy the plan to `docs/loom/plans/YYYY-MM-DD-<slug>-impl-plan.md` as a permanent project reference
 7. Ask if the user is ready to proceed to execution (Phase 3)
 8. Upon approval, create the session state file via the session-management skill

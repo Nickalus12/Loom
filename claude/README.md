@@ -1,20 +1,20 @@
-# Maestro — Claude Code Plugin
+﻿# Loom â€” Claude Code Plugin
 
-[![Version](https://img.shields.io/badge/version-1.5.0-blue)](https://github.com/josstei/maestro-orchestrate/releases)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue)](https://github.com/Nickalus12/loom-orchestrate/releases)
 [![License](https://img.shields.io/badge/license-Apache-2.0-green)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
 
-Multi-agent development orchestration platform — 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands
+Multi-agent development orchestration platform â€” 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands
 
 ## Installation
 
 ### From Marketplace (recommended)
 
-Add the maestro marketplace, then install the plugin:
+Add the loom marketplace, then install the plugin:
 
 ```bash
-claude plugin marketplace add josstei/maestro-orchestrate
-claude plugin install maestro@maestro-orchestrator --scope user
+claude plugin marketplace add Nickalus12/loom-orchestrate
+claude plugin install loom@loom-orchestrator --scope user
 ```
 
 The marketplace must be configured before installing. See the main [README](../README.md) for marketplace setup details.
@@ -30,9 +30,9 @@ The marketplace must be configured before installing. See the main [README](../R
 ### Plugin Management
 
 ```bash
-claude plugin update maestro          # Pull the latest version
-claude plugin disable maestro         # Disable without uninstalling
-claude plugin uninstall maestro       # Remove the plugin entirely
+claude plugin update loom          # Pull the latest version
+claude plugin disable loom         # Disable without uninstalling
+claude plugin uninstall loom       # Remove the plugin entirely
 ```
 
 ### Development / Testing
@@ -40,7 +40,7 @@ claude plugin uninstall maestro       # Remove the plugin entirely
 Load the plugin for a single session without persistent registration:
 
 ```bash
-claude --plugin-dir /path/to/maestro-orchestrate/claude
+claude --plugin-dir /path/to/loom-orchestrate/claude
 ```
 
 Use `/reload-plugins` inside the session to pick up file changes without restarting.
@@ -48,8 +48,8 @@ Use `/reload-plugins` inside the session to pick up file changes without restart
 For local development, clone the repo first:
 
 ```bash
-git clone https://github.com/josstei/maestro-orchestrate
-claude --plugin-dir /path/to/maestro-orchestrate/claude
+git clone https://github.com/Nickalus12/loom-orchestrate
+claude --plugin-dir /path/to/loom-orchestrate/claude
 ```
 
 ### Verify Installation
@@ -57,8 +57,8 @@ claude --plugin-dir /path/to/maestro-orchestrate/claude
 After starting Claude Code with the plugin loaded:
 
 - Type `/` and verify `orchestrate`, `review`, `debug`, `security-audit`, `perf-check`, `seo-audit`, `a11y-audit`, and `compliance-check` appear in autocomplete.
-- Run `/agents` and verify agents with the `maestro:` prefix appear (e.g., `maestro:coder`, `maestro:architect`).
-- Confirm MCP tools are registered: `mcp__plugin_maestro_maestro__*` tools should be available (e.g., `mcp__plugin_maestro_maestro__get_session_status`).
+- Run `/agents` and verify agents with the `loom:` prefix appear (e.g., `loom:coder`, `loom:architect`).
+- Confirm MCP tools are registered: `mcp__plugin_loom_loom__*` tools should be available (e.g., `mcp__plugin_loom_loom__get_session_status`).
 
 ### MCP Server
 
@@ -67,9 +67,9 @@ The MCP server is auto-registered via `claude/.mcp.json`. If MCP tools are not a
 ```json
 {
   "mcpServers": {
-    "maestro": {
+    "loom": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/maestro-server.js"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/loom-server.js"],
       "cwd": "${CLAUDE_PLUGIN_ROOT}"
     }
   }
@@ -86,7 +86,7 @@ Start a full orchestration by describing what you want to build:
 /orchestrate Build a REST API for a task management system with user authentication
 ```
 
-Maestro will walk you through the complete lifecycle:
+Loom will walk you through the complete lifecycle:
 
 1. **Design Dialogue** -- Structured questions one at a time, 2-3 architectural approaches with trade-offs.
 2. **Design Review** -- Section-by-section approval of the design document.
@@ -96,7 +96,7 @@ Maestro will walk you through the complete lifecycle:
 6. **Quality Gate** -- Final code review blocks on unresolved Critical or Major findings.
 7. **Completion & Archival** -- Summary of files changed, token usage, and next steps.
 
-**Express mode** -- For simple tasks, Maestro detects low complexity and uses a streamlined flow: 1-2 questions, brief approval, single agent, code review, done.
+**Express mode** -- For simple tasks, Loom detects low complexity and uses a streamlined flow: 1-2 questions, brief approval, single agent, code review, done.
 
 ## Commands
 
@@ -119,7 +119,7 @@ These Claude entrypoints come from the public top-level skills in `skills/`. Int
 
 ## Agents
 
-All agents are registered with a `maestro:` namespace prefix. When the orchestrator delegates work, it dispatches agents as `maestro:coder`, `maestro:architect`, etc. Claude Code agents use **kebab-case** naming (e.g., `code-reviewer`, `api-designer`), contrasting with Gemini CLI's snake_case convention (e.g., `code_reviewer`, `api_designer`). The `maestro:` prefix is always required when dispatching.
+All agents are registered with a `loom:` namespace prefix. When the orchestrator delegates work, it dispatches agents as `loom:coder`, `loom:architect`, etc. Claude Code agents use **kebab-case** naming (e.g., `code-reviewer`, `api-designer`), contrasting with Gemini CLI's snake_case convention (e.g., `code_reviewer`, `api_designer`). The `loom:` prefix is always required when dispatching.
 
 All agents share a baseline tool set: `Read`, `Glob`, `Grep`, `Skill`. Tool tiers reflect additional capabilities beyond that baseline.
 
@@ -152,20 +152,20 @@ All agents share a baseline tool set: `Read`, `Glob`, `Grep`, `Skill`. Tool tier
 
 ### MCP Tool Names
 
-MCP tools are registered with a namespace prefix. Skills reference bare names like `initialize_workspace` but the actual tool name is `mcp__plugin_maestro_maestro__initialize_workspace`. The orchestrate skill includes a mapping table that handles this automatically.
+MCP tools are registered with a namespace prefix. Skills reference bare names like `initialize_workspace` but the actual tool name is `mcp__plugin_loom_loom__initialize_workspace`. The orchestrate skill includes a mapping table that handles this automatically.
 
 ### Agent Names
 
-Agents are registered as `maestro:<agent-name>` (e.g., `maestro:coder`, `maestro:code-reviewer`). The orchestrate skill includes a mapping that handles this automatically.
+Agents are registered as `loom:<agent-name>` (e.g., `loom:coder`, `loom:code-reviewer`). The orchestrate skill includes a mapping that handles this automatically.
 
 ### Hooks
 
 Claude Code hooks are registered in `hooks/claude-hooks.json`:
 
-- **SessionStart** — Prune stale sessions, initialize hook state
-- **SessionEnd** — Clean up hook state
-- **PreToolUse (Agent matcher)** — Track active agent, inject session context
-- **PreToolUse (Bash matcher)** — Policy enforcement (blocks destructive commands)
+- **SessionStart** â€” Prune stale sessions, initialize hook state
+- **SessionEnd** â€” Clean up hook state
+- **PreToolUse (Agent matcher)** â€” Track active agent, inject session context
+- **PreToolUse (Bash matcher)** â€” Policy enforcement (blocks destructive commands)
 
 ## Configuration
 

@@ -1,4 +1,4 @@
----
+﻿---
 name: delegation
 description: Agent delegation best practices for constructing effective subagent prompts with proper scoping
 user-invocable: false
@@ -15,7 +15,7 @@ Before constructing any delegation prompt, inject the shared agent base protocol
 ### Injection Steps
 1. Read `agent-base-protocol.md` from `${CLAUDE_PLUGIN_ROOT}/skills/delegation/protocols/`
 2. Read `filesystem-safety-protocol.md` from `${CLAUDE_PLUGIN_ROOT}/skills/delegation/protocols/`
-3. Prepend both protocols to the delegation prompt (base protocol first, then filesystem safety) — these appear before the task-specific content
+3. Prepend both protocols to the delegation prompt (base protocol first, then filesystem safety) â€” these appear before the task-specific content
 4. For each phase listed in the current phase's `blocked_by`, read `phases[].downstream_context` from session state and include it in the prompt
 5. If any required `downstream_context` is missing, include an explicit placeholder noting the missing dependency context (never omit silently)
 
@@ -40,7 +40,7 @@ Context from completed phases:
 **File Manifest**: Complete list of files created or modified in prior phases, so the agent knows what already exists and can import from or extend those files.
 
 **Missing Context Fallback**: If a blocked dependency has no stored downstream context, include a visible placeholder entry in the prompt:
-`- Phase [N] ([agent]): Downstream Context missing in session state — verify dependency output before implementation`
+`- Phase [N] ([agent]): Downstream Context missing in session state â€” verify dependency output before implementation`
 
 ### Downstream Consumer Declaration
 
@@ -56,9 +56,9 @@ This primes the agent to structure their Downstream Context section for maximum 
 Before constructing any delegation prompt, resolve configurable parameters:
 
 1. Read the agent's base definition frontmatter (`temperature`, `max_turns`, `timeout_mins`, `tools`)
-2. Do not invent Maestro-level model, temperature, turn, or timeout overrides. Native delegation uses agent frontmatter defaults plus any runtime-level agent configuration already active in the session.
+2. Do not invent Loom-level model, temperature, turn, or timeout overrides. Native delegation uses agent frontmatter defaults plus any runtime-level agent configuration already active in the session.
 3. Include only task-relevant execution context in the prompt metadata
-4. If the agent appears in `MAESTRO_DISABLED_AGENTS`, do not construct a delegation prompt — report to the orchestrator that the agent is disabled
+4. If the agent appears in `LOOM_DISABLED_AGENTS`, do not construct a delegation prompt â€” report to the orchestrator that the agent is disabled
 
 
 ## Delegation Prompt Template
@@ -111,11 +111,11 @@ Include the exact command(s) to run after completion. The agent should run these
 Never include interactive CLI commands in delegation prompts. Subagents run autonomously without user input. Interactive commands will hang indefinitely.
 
 <ANTI-PATTERN>
-WRONG — Delegation prompt includes interactive scaffolding:
+WRONG â€” Delegation prompt includes interactive scaffolding:
   "Run `npx create-next-app@latest . --typescript --tailwind`"
   "Run `npm init` to create package.json"
 
-CORRECT — Delegation prompt specifies direct file creation:
+CORRECT â€” Delegation prompt specifies direct file creation:
   "Create package.json with the following content: ..."
   "Create tsconfig.json, tailwind.config.ts, and src/app/layout.tsx directly"
 </ANTI-PATTERN>
@@ -156,7 +156,7 @@ Explicitly state what the agent must NOT do:
 
 ## Agent Tool Dispatch Contract
 
-Every Maestro agent in the Agent Roster is registered as its own tool in the runtime with a `maestro:` prefix. When delegating a phase, call the assigned agent via the `Agent` tool using `subagent_type: "maestro:<name>"` — the name matches the agent name in the roster (e.g., `maestro:coder`, `maestro:design-system-engineer`, `maestro:tester`).
+Every Loom agent in the Agent Roster is registered as its own tool in the runtime with a `loom:` prefix. When delegating a phase, call the assigned agent via the `Agent` tool using `subagent_type: "loom:<name>"` â€” the name matches the agent name in the roster (e.g., `loom:coder`, `loom:design-system-engineer`, `loom:tester`).
 
 This is mandatory because each agent carries its frontmatter configuration:
 - `temperature`: Controls output determinism (e.g., coder uses 0.2 for precise code)
@@ -164,17 +164,17 @@ This is mandatory because each agent carries its frontmatter configuration:
 - `tools`: Restricts the agent to its authorized tool surface (e.g., read-only agents cannot call Write/Edit)
 - Body: Contains the agent's specialized methodology and decision frameworks
 
-Using bare agent names (without the `maestro:` prefix) will fail with "Agent type not found." Never use unprefixed names for Maestro delegations.
+Using bare agent names (without the `loom:` prefix) will fail with "Agent type not found." Never use unprefixed names for Loom delegations.
 
 **Sequential dispatch:**
 ```
-Agent(subagent_type: "maestro:coder", prompt: "Agent: coder\nPhase: 2/6\nBatch: single\nSession: my-session\n\n[full delegation prompt]")
+Agent(subagent_type: "loom:coder", prompt: "Agent: coder\nPhase: 2/6\nBatch: single\nSession: my-session\n\n[full delegation prompt]")
 ```
 
 **Parallel dispatch (multiple Agent calls in one turn):**
 ```
-Agent(subagent_type: "maestro:coder", prompt: "Agent: coder\nPhase: 2/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 2]")
-Agent(subagent_type: "maestro:ux-designer", prompt: "Agent: ux-designer\nPhase: 3/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 3]")
+Agent(subagent_type: "loom:coder", prompt: "Agent: coder\nPhase: 2/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 2]")
+Agent(subagent_type: "loom:ux-designer", prompt: "Agent: ux-designer\nPhase: 3/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 3]")
 ```
 
 ## Parallel Delegation
@@ -192,13 +192,13 @@ For each agent in a ready batch:
    - `Batch: <batch_id>`
    - `Session: <session_id>`
 3. Keep prompts self-contained with explicit files, deliverables, validation commands, exclusions, and dependency context
-4. Emit only contiguous agent tool calls for the current batch turn — no shell commands, file writes, or narration between them
+4. Emit only contiguous agent tool calls for the current batch turn â€” no shell commands, file writes, or narration between them
 
 Native parallel batches may pause if an agent asks a follow-up question. Scope prompts tightly enough that questions are rare.
 
 ### Tool Restriction Enforcement
 
-Maestro enforces tool permissions at two levels:
+Loom enforces tool permissions at two levels:
 
 **Level 1: Native enforcement (primary)**
 
@@ -254,25 +254,25 @@ All agents in a parallel batch must complete before:
 ### Conflict Prevention
 - Assign non-overlapping file sets to each agent
 - Reserve shared files (barrel exports, configuration, dependency manifests) for a single agent or a post-batch update step
-- If two phases must modify the same file, they cannot run in parallel — execute them sequentially
-- Parallel agents must NOT create git commits — the orchestrator commits after validating the batch
+- If two phases must modify the same file, they cannot run in parallel â€” execute them sequentially
+- Parallel agents must NOT create git commits â€” the orchestrator commits after validating the batch
 
 ## Hook Integration
 
-Maestro hooks fire at agent boundaries during delegation, providing context injection and output validation. Understanding hook behavior is essential for constructing correct delegation prompts.
+Loom hooks fire at agent boundaries during delegation, providing context injection and output validation. Understanding hook behavior is essential for constructing correct delegation prompts.
 
 ### Agent Tracking
 
 The `hooks system (PreToolUse)` hook tracks which agent is currently executing:
 
 - Preferred signal: the required `Agent: <agent_name>` header in the delegation prompt
-- Legacy fallbacks: `MAESTRO_CURRENT_AGENT` from the environment, then regex-based detection of patterns like `delegate to <agent>` or `@<agent>`
+- Legacy fallbacks: `LOOM_CURRENT_AGENT` from the environment, then regex-based detection of patterns like `delegate to <agent>` or `@<agent>`
 
-The detected agent name is persisted to `/tmp/maestro-hooks/<session-id>/active-agent` and cleared by the `orchestrator inline validation (no hook — see SKIP_EVENTS_CLAUDE)` hook on every allowed response (both successful validation and retry allow-through). On deny (malformed output), the active agent is preserved to enable re-validation on retry.
+The detected agent name is persisted to `/tmp/loom-hooks/<session-id>/active-agent` and cleared by the `orchestrator inline validation (no hook â€” see SKIP_EVENTS_CLAUDE)` hook on every allowed response (both successful validation and retry allow-through). On deny (malformed output), the active agent is preserved to enable re-validation on retry.
 
 ### Session Context Injection
 
-When an active orchestration session exists, the `hooks system (PreToolUse)` hook parses `<MAESTRO_STATE_DIR>/state/active-session.md` and injects a compact context line into the agent's turn:
+When an active orchestration session exists, the `hooks system (PreToolUse)` hook parses `<LOOM_STATE_DIR>/state/active-session.md` and injects a compact context line into the agent's turn:
 
 ```
 Active session: current_phase=3, status=in_progress
@@ -282,7 +282,7 @@ This gives delegated agents awareness of where they sit in the orchestration wor
 
 ### Handoff Format Enforcement
 
-The `orchestrator inline validation (no hook — see SKIP_EVENTS_CLAUDE)` hook validates that every subagent response contains both required handoff sections:
+The `orchestrator inline validation (no hook â€” see SKIP_EVENTS_CLAUDE)` hook validates that every subagent response contains both required handoff sections:
 
 - `## Task Report` (or `# Task Report`)
 - `## Downstream Context` (or `# Downstream Context`)
@@ -292,7 +292,7 @@ If either heading is missing:
 1. **First failure**: The hook blocks the response and requests a retry with a diagnostic message specifying which section is missing.
 2. **Second failure** (`stop_hook_active=true`, mapped to `stopHookActive` in JS): The hook allows the malformed response through to prevent infinite retry loops, logging a warning.
 
-This enforcement is the runtime complement to the Output Handoff Contract defined in the agent-base-protocol. Delegation prompts do not need to re-state the retry mechanism — the hook handles it transparently.
+This enforcement is the runtime complement to the Output Handoff Contract defined in the agent-base-protocol. Delegation prompts do not need to re-state the retry mechanism â€” the hook handles it transparently.
 
 **Exception**: The TechLead/orchestrator agent is excluded from validation. Only delegated subagents are subject to format enforcement.
 
@@ -306,7 +306,7 @@ Validation: [build command] && [lint command] && [test command]
 ### For Refactoring Agents (`refactor`)
 ```
 Validation: [build command] && [test command]
-Verify: No behavior changes — all existing tests must still pass
+Verify: No behavior changes â€” all existing tests must still pass
 ```
 
 ### For Test Agents (`tester`)
@@ -317,7 +317,7 @@ Verify: All new tests pass, report coverage metrics
 
 ### For Assessment Agents (`architect`, `api-designer`, `code-reviewer`, `debugger`, `performance-engineer`, `security-engineer`, `seo-specialist`, `accessibility-specialist`, `content-strategist`, `compliance-reviewer`)
 ```
-Validation: N/A (assessment-only — no write tools)
+Validation: N/A (assessment-only â€” no write tools)
 Verify: Findings reference specific files and line numbers
 ```
 

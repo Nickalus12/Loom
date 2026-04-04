@@ -1,12 +1,12 @@
-# Maestro Overview
+﻿# Loom Overview
 
-A high-level explanation of how Maestro works, its agent system, and execution model. For installation and command details, see the [README](README.md). For a comprehensive walkthrough, see the [Usage Guide](USAGE.md).
+A high-level explanation of how Loom works, its agent system, and execution model. For installation and command details, see the [README](README.md). For a comprehensive walkthrough, see the [Usage Guide](USAGE.md).
 
 ## How It Works
 
-Maestro is a multi-agent orchestration platform for **Gemini CLI** and **Claude Code**. It introduces a TechLead orchestrator persona that coordinates 22 specialized subagents through structured workflows. The orchestrator does not implement code directly -- it designs, plans, delegates, validates, and reports. The same orchestration engine, agents, and quality gates run on both platforms.
+Loom is a multi-agent orchestration platform for **Gemini CLI** and **Claude Code**. It introduces a TechLead orchestrator persona that coordinates 22 specialized subagents through structured workflows. The orchestrator does not implement code directly -- it designs, plans, delegates, validates, and reports. The same orchestration engine, agents, and quality gates run on both platforms.
 
-When you invoke `/maestro:orchestrate`, Maestro classifies the task by complexity and routes it to the appropriate workflow:
+When you invoke `/loom:orchestrate`, Loom classifies the task by complexity and routes it to the appropriate workflow:
 
 - **Simple tasks** enter the Express workflow: a streamlined inline flow with 1-2 clarifying questions, a consolidated brief, single-agent delegation, code review, and archival.
 - **Medium and complex tasks** enter the Standard workflow: a full 4-phase lifecycle (Design, Plan, Execute, Complete) with multi-agent delegation, parallel execution support, and iterative quality gates.
@@ -25,7 +25,7 @@ Express mode is designed for simple, focused tasks -- single-concern changes tha
 4. **Review**: `code_reviewer` validates the output; Critical/Major findings get one retry
 5. **Archive**: Session state archived; no design document or implementation plan exists to move
 
-Express bypasses the execution mode gate and always dispatches sequentially. If the user rejects the brief twice, Maestro escalates to Standard workflow.
+Express bypasses the execution mode gate and always dispatches sequentially. If the user rejects the brief twice, Loom escalates to Standard workflow.
 
 ### Standard Workflow
 
@@ -40,7 +40,7 @@ Each phase has defined entry criteria, user approval checkpoints, and produces a
 
 ### Complexity Classification
 
-Before entering any workflow, Maestro classifies the task using heuristics based on scope, example patterns, and codebase characteristics:
+Before entering any workflow, Loom classifies the task using heuristics based on scope, example patterns, and codebase characteristics:
 
 | Signal | Simple | Medium | Complex |
 |--------|--------|--------|---------|
@@ -54,7 +54,7 @@ The classification is always presented to the user with rationale, and the user 
 
 ### Roster by Domain
 
-Maestro coordinates 22 agents across 8 editorial domains. The domain analysis during planning determines which domains are relevant, proportional to task complexity:
+Loom coordinates 22 agents across 8 editorial domains. The domain analysis during planning determines which domains are relevant, proportional to task complexity:
 
 **Engineering** (12 agents): architect, api_designer, coder, code_reviewer, data_engineer, debugger, devops_engineer, performance_engineer, refactor, security_engineer, tester, technical_writer. These agents cover system design, implementation, testing, infrastructure, security, and documentation.
 
@@ -146,14 +146,14 @@ Before execution begins, the implementation plan is validated for structural cor
 
 - All dependencies reference valid phase IDs with no circular chains
 - File ownership does not overlap across parallel-eligible phases at the same dependency depth
-- Agent assignments match the available roster (respecting `MAESTRO_DISABLED_AGENTS`)
+- Agent assignments match the available roster (respecting `LOOM_DISABLED_AGENTS`)
 - Validation commands are specified for phases producing testable output
 
 ## Execution Model
 
 ### Execution Mode Gate
 
-The execution mode gate is a mandatory checkpoint before any delegation in the Standard workflow. It reads `MAESTRO_EXECUTION_MODE` (default: `ask`) and either records the preconfigured mode or prompts the user with a plan-informed recommendation.
+The execution mode gate is a mandatory checkpoint before any delegation in the Standard workflow. It reads `LOOM_EXECUTION_MODE` (default: `ask`) and either records the preconfigured mode or prompts the user with a plan-informed recommendation.
 
 The recommendation is based on the ratio of parallelizable phases to total phases:
 - More than 50% parallelizable: recommend parallel
@@ -164,12 +164,12 @@ Express workflow bypasses this gate entirely and always dispatches sequentially.
 
 ### Native Parallel Batches
 
-When parallel mode is selected, Maestro uses Gemini CLI's native subagent scheduler to dispatch independent phases concurrently. The scheduler only parallelizes contiguous agent tool calls, so batch turns are composed exclusively of agent calls -- no interleaved shell commands, file writes, or narration.
+When parallel mode is selected, Loom uses Gemini CLI's native subagent scheduler to dispatch independent phases concurrently. The scheduler only parallelizes contiguous agent tool calls, so batch turns are composed exclusively of agent calls -- no interleaved shell commands, file writes, or narration.
 
 **Batch lifecycle:**
 
 1. Identify ready phases at the same dependency depth with non-overlapping file ownership
-2. Slice using `MAESTRO_MAX_CONCURRENT` (`0` = full batch)
+2. Slice using `LOOM_MAX_CONCURRENT` (`0` = full batch)
 3. Mark chunk `in_progress` and set `current_batch` in session state
 4. Emit contiguous subagent tool calls
 5. Parse results from `## Task Report` and `## Downstream Context` sections
@@ -178,14 +178,14 @@ When parallel mode is selected, Maestro uses Gemini CLI's native subagent schedu
 **Constraints:**
 - Native subagents currently run in autonomous mode (YOLO)
 - No shared context between agents in the same batch
-- Interrupted `in_progress` phases are restarted (not resumed) on `/maestro:resume`
+- Interrupted `in_progress` phases are restarted (not resumed) on `/loom:resume`
 
 ### Error Handling
 
 Errors are handled at the phase level:
 
 1. Error recorded in session state with details
-2. Automatic retry up to `MAESTRO_MAX_RETRIES` (default: 2)
+2. Automatic retry up to `LOOM_MAX_RETRIES` (default: 2)
 3. If retries exhausted, user is asked for guidance (retry with modifications, skip, or abort)
 
 ### Code Review Gate
@@ -201,7 +201,7 @@ Phase 4 includes a final `code_reviewer` quality gate. If execution changed non-
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Classify: /maestro:orchestrate
+    [*] --> Classify: /loom:orchestrate
 
     Classify --> Express: simple
     Classify --> Standard: medium/complex
@@ -212,14 +212,14 @@ stateDiagram-v2
     Active --> Completed: All phases + review gate pass
     Active --> Interrupted: Timeout / error / stop
 
-    Interrupted --> Active: /maestro:resume
-    Completed --> Archived: Auto or /maestro:archive
-    Active --> Archived: /maestro:archive
+    Interrupted --> Active: /loom:resume
+    Completed --> Archived: Auto or /loom:archive
+    Active --> Archived: /loom:archive
 
     Archived --> [*]
 ```
 
-**State file location**: `<MAESTRO_STATE_DIR>/state/active-session.md` (default: `docs/maestro/state/active-session.md`)
+**State file location**: `<LOOM_STATE_DIR>/state/active-session.md` (default: `docs/loom/state/active-session.md`)
 
 **Key fields in session state:**
 - `workflow_mode`: `express` or `standard`
@@ -229,25 +229,25 @@ stateDiagram-v2
 - `current_batch`: Active batch identifier during parallel execution
 - `phases[]`: Per-phase status, agents, files, errors, and downstream context
 
-Maestro enforces a single active session at a time. Starting a new orchestration with an active session prompts the user to resume or archive before proceeding.
+Loom enforces a single active session at a time. Starting a new orchestration with an active session prompts the user to resume or archive before proceeding.
 
 ## MCP Tools
 
-Maestro provides an MCP server with tools for workspace management, complexity analysis, plan validation, and session state operations:
+Loom provides an MCP server with tools for workspace management, complexity analysis, plan validation, and session state operations:
 
 | Tool | Description |
 |------|-------------|
 | `initialize_workspace` | Create workspace directory structure for session state and plans |
 | `assess_task_complexity` | Analyze repository signals and classify task complexity |
 | `validate_plan` | Validate implementation plan structure, dependencies, and parallelization profile |
-| `resolve_settings` | Resolve all Maestro settings with proper precedence (env > workspace .env > extension .env > default) |
+| `resolve_settings` | Resolve all Loom settings with proper precedence (env > workspace .env > extension .env > default) |
 | `create_session` | Create a new session state file with initial metadata |
 | `update_session` | Atomically update session fields (execution mode, phase status, token usage) |
 | `transition_phase` | Atomically transition a phase to a new status with validation |
 | `get_session_status` | Read current session state in structured format |
 | `archive_session` | Move session artifacts to archive directories |
-| `get_skill_content` | Read protocols, templates, and references by identifier — bypasses workspace sandbox (methodology skills use `activate_skill` instead) |
+| `get_skill_content` | Read protocols, templates, and references by identifier â€” bypasses workspace sandbox (methodology skills use `activate_skill` instead) |
 
 When MCP tools are available, the orchestrator uses them for all state operations. When unavailable, it falls back to direct filesystem reads and writes on session state files.
 
-The orchestrate command's step sequence lives in `references/orchestration-steps.md` — a shared reference file loaded by both Gemini CLI (via `get_skill_content`) and Claude Code (via `Read` tool) as the sole procedural authority.
+The orchestrate command's step sequence lives in `references/orchestration-steps.md` â€” a shared reference file loaded by both Gemini CLI (via `get_skill_content`) and Claude Code (via `Read` tool) as the sole procedural authority.

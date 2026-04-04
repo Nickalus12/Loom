@@ -1,10 +1,10 @@
----
+﻿---
 name: review
-description: Perform a Maestro-style code review with findings ordered by severity and concrete file references
+description: Perform a Loom-style code review with findings ordered by severity and concrete file references
 ---
 
 
-# Maestro Review
+# Loom Review
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/architecture.md`.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 'use strict';
 
 const fs = require('fs');
@@ -9,9 +9,9 @@ const { resolveActiveSessionPath } = require('../lib/state/session-state');
 function main() {
   const projectRoot = resolveProjectRoot();
 
-  const resolvedStateDir = resolveSetting('MAESTRO_STATE_DIR', projectRoot);
+  const resolvedStateDir = resolveSetting('LOOM_STATE_DIR', projectRoot);
   if (resolvedStateDir) {
-    process.env.MAESTRO_STATE_DIR = resolvedStateDir;
+    process.env.LOOM_STATE_DIR = resolvedStateDir;
   }
 
   try {

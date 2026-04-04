@@ -1,10 +1,10 @@
----
+﻿---
 name: debug
-description: Run the Maestro debugging workflow for investigation-heavy tasks
+description: Run the Loom debugging workflow for investigation-heavy tasks
 ---
 
 
-# Maestro Debug
+# Loom Debug
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/architecture.md`.
 

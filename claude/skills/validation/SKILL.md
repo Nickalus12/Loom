@@ -1,4 +1,4 @@
----
+﻿---
 name: validation
 description: Cross-cutting validation methodology for verifying phase outputs and project integrity
 user-invocable: false
@@ -98,7 +98,7 @@ The following are recorded but do not block progression:
 
 ## Validation Modes
 
-The validation strictness is controlled by `MAESTRO_VALIDATION_STRICTNESS` (default: `normal`).
+The validation strictness is controlled by `LOOM_VALIDATION_STRICTNESS` (default: `normal`).
 
 | Mode | Behavior |
 |------|----------|
@@ -114,7 +114,7 @@ When evaluating each validation step:
 3. Apply the strictness mode:
    - `strict`: Fail (Blocking) AND Warn (Non-Blocking) both stop progression
    - `normal`: Only Fail (Blocking) stops progression
-   - `lenient`: Record everything, stop nothing — append all results to session state and continue
+   - `lenient`: Record everything, stop nothing â€” append all results to session state and continue
 4. If strictness causes a result to be downgraded from blocking to non-blocking, note this in the validation output: "Warning recorded but not blocking (lenient mode)"
 
 ## Post-Phase Validation
@@ -163,7 +163,7 @@ When full pipeline validation is unnecessary, use targeted validation based on t
 
 ### Validation Scope by Change Type
 - **Phase created new files only** (no existing files modified): Run lint + type check on the new files only. This provides fast feedback without running the full test suite against unchanged code.
-- **Phase modified existing files**: Run the full test suite. Existing tests serve as behavior-preservation checks — any failure indicates a potential regression.
+- **Phase modified existing files**: Run the full test suite. Existing tests serve as behavior-preservation checks â€” any failure indicates a potential regression.
 - **Phase touched configuration files** (build config, CI config, environment config, dependency manifests): Run the full pipeline (build + lint + type check + all tests). Configuration changes can have cascading effects across the entire project.
 - **Phase only produced documentation or analysis**: Skip validation (record as `skipped` with rationale).
 
@@ -183,7 +183,7 @@ When validation fails, provide a structured diagnosis to help the orchestrator d
 3. **Determine causality**: Is the failure caused by the current phase's changes, or is it a pre-existing issue?
    - Check: Does the failure reference files modified in this phase?
    - Check: Run validation against a clean snapshot while always restoring local state:
-     - `git stash push --include-untracked -m "maestro-causality-check"`
+     - `git stash push --include-untracked -m "loom-causality-check"`
      - `[validation command]` (capture exit code as `validation_exit`)
      - `git stash pop` (run regardless of `validation_exit`)
    - If `validation_exit` is non-zero in the clean snapshot, classify the failure as pre-existing.
@@ -199,7 +199,7 @@ When validation fails, provide a structured diagnosis to help the orchestrator d
 - **Failure Type**: [type error | lint error | test failure | build error]
 - **Failing Files**: [list of files from current phase involved in the failure]
 - **Root Cause**: [brief description of why validation failed]
-- **Pre-existing**: [yes | no — was this failure present before this phase's changes?]
+- **Pre-existing**: [yes | no â€” was this failure present before this phase's changes?]
 - **Resolution Path**: [re-delegate to same agent | escalate to user | requires cross-phase fix]
 - **Recommended Action**: [specific next step with context to include in re-delegation or escalation]
 ```

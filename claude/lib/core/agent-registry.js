@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const KNOWN_AGENTS = Object.freeze([
   'architect',
@@ -76,7 +76,7 @@ function detectAgentFromPrompt(prompt) {
     }
   }
 
-  const envAgent = normalizeAgentName(process.env.MAESTRO_CURRENT_AGENT);
+  const envAgent = normalizeAgentName(process.env.LOOM_CURRENT_AGENT);
   if (envAgent && KNOWN_AGENTS.includes(envAgent)) return envAgent;
 
   if (!prompt) return '';

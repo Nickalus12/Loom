@@ -1,4 +1,4 @@
----
+﻿---
 name: design-dialogue
 description: Guides structured design conversations for complex engineering tasks
 ---
@@ -7,9 +7,9 @@ description: Guides structured design conversations for complex engineering task
 
 **Standard workflow only.** If `task_complexity` is `simple` and workflow mode is Express, do not activate this skill. Simple tasks use the Express workflow, which does not activate design-dialogue. Return to the Express Workflow section.
 
-Activate this skill when beginning Phase 1 of Maestro orchestration. Immediately call `enter_plan_mode` to enter Plan Mode for the design phase. If the tool call fails or is unavailable, inform the user that Plan Mode is not enabled and provide activation instructions: "Plan Mode gives you a dedicated review surface for designs and plans. To enable it, run: `gemini --settings` and set `experimental.plan` to `true`, then restart this session." Ask the user if they want to pause and enable it, or continue without Plan Mode. If continuing without Plan Mode, use `ask_user` with `type: 'yesno'` for design approvals and `type: 'choice'` for approach selection. This skill provides the structured methodology for conducting design conversations that converge on approved architectural designs.
+Activate this skill when beginning Phase 1 of Loom orchestration. Immediately call `enter_plan_mode` to enter Plan Mode for the design phase. If the tool call fails or is unavailable, inform the user that Plan Mode is not enabled and provide activation instructions: "Plan Mode gives you a dedicated review surface for designs and plans. To enable it, run: `gemini --settings` and set `experimental.plan` to `true`, then restart this session." Ask the user if they want to pause and enable it, or continue without Plan Mode. If continuing without Plan Mode, use `ask_user` with `type: 'yesno'` for design approvals and `type: 'choice'` for approach selection. This skill provides the structured methodology for conducting design conversations that converge on approved architectural designs.
 
-**User confirmation sequence**: Phase 1 entry triggers two user-facing confirmations — first the `activate_skill` consent dialog (required for non-builtin skills), then the `enter_plan_mode` transition. Both are expected; do not treat the second confirmation as redundant or skip it.
+**User confirmation sequence**: Phase 1 entry triggers two user-facing confirmations â€” first the `activate_skill` consent dialog (required for non-builtin skills), then the `enter_plan_mode` transition. Both are expected; do not treat the second confirmation as redundant or skip it.
 
 ## Design Depth Gate
 
@@ -17,17 +17,17 @@ Before asking any design questions, present the user with a depth selector to co
 
 **Modes:**
 
-- **Quick** — Current reasoning behavior. One question per topic, pros/cons on approaches, standard design sections. No enrichment steps, no decision matrix, no reasoning annotations. Choose this when you already have clarity and want to move fast. (The depth selector prompt itself is the only new conversational step — once Quick is selected, all subsequent behavior matches pre-change behavior exactly.)
-- **Standard** (Recommended) — Adds assumption surfacing after each answer and a decision matrix during approach evaluation. Design sections gain rationale annotations tying decisions to project context. The default for most work.
-- **Deep** — Full treatment. Follow-up probing into implications, assumption surfacing with confirmation, trade-off narration on each choice, decision matrix with scoring, rationale annotations, per-decision alternatives, and full requirement traceability. Choose this for high-stakes or ambiguous tasks.
+- **Quick** â€” Current reasoning behavior. One question per topic, pros/cons on approaches, standard design sections. No enrichment steps, no decision matrix, no reasoning annotations. Choose this when you already have clarity and want to move fast. (The depth selector prompt itself is the only new conversational step â€” once Quick is selected, all subsequent behavior matches pre-change behavior exactly.)
+- **Standard** (Recommended) â€” Adds assumption surfacing after each answer and a decision matrix during approach evaluation. Design sections gain rationale annotations tying decisions to project context. The default for most work.
+- **Deep** â€” Full treatment. Follow-up probing into implications, assumption surfacing with confirmation, trade-off narration on each choice, decision matrix with scoring, rationale annotations, per-decision alternatives, and full requirement traceability. Choose this for high-stakes or ambiguous tasks.
 
-**Depth propagation**: Remember the user's chosen depth mode and apply it consistently to all subsequent steps in this skill. The depth mode is not re-prompted — it is set once and carried forward. If the user's answer to the depth prompt is ambiguous, default to Standard.
+**Depth propagation**: Remember the user's chosen depth mode and apply it consistently to all subsequent steps in this skill. The depth mode is not re-prompted â€” it is set once and carried forward. If the user's answer to the depth prompt is ambiguous, default to Standard.
 
-**Depth vs. complexity**: Depth and complexity guidance (simple/medium/complex) are orthogonal. Complexity controls which sections appear and word count per section. Depth controls reasoning richness within each section. They compose independently — a user may select Deep depth on a Simple complexity task or Quick depth on a Complex task. Both are valid choices.
+**Depth vs. complexity**: Depth and complexity guidance (simple/medium/complex) are orthogonal. Complexity controls which sections appear and word count per section. Depth controls reasoning richness within each section. They compose independently â€” a user may select Deep depth on a Simple complexity task or Quick depth on a Complex task. Both are valid choices.
 
 **Frontmatter**: Record the chosen depth in the design document frontmatter as `design_depth: quick | standard | deep`. Also record `task_complexity: simple | medium | complex` in the design document frontmatter after `design_depth`.
 
-**First-Turn Contract**: On the first turn, Maestro presents the complexity classification result (classified per the complexity classification section in the orchestrator) and the depth selector with a complexity-informed recommendation. For `simple` tasks, auto-select Quick and inform the user: "This looks straightforward — using Quick depth. Say 'deeper' if you want more analysis." For `medium` tasks, recommend Standard. For `complex` tasks, recommend Standard or Deep. The first actual design question moves to the second turn.
+**First-Turn Contract**: On the first turn, Loom presents the complexity classification result (classified per the complexity classification section in the orchestrator) and the depth selector with a complexity-informed recommendation. For `simple` tasks, auto-select Quick and inform the user: "This looks straightforward â€” using Quick depth. Say 'deeper' if you want more analysis." For `medium` tasks, recommend Standard. For `complex` tasks, recommend Standard or Deep. The first actual design question moves to the second turn.
 
 ## Repository Grounding Protocol
 
@@ -56,9 +56,9 @@ Use the investigator's output to:
 ## Question Framework
 
 ### Principles
-- Ask one question at a time — never batch multiple questions
+- Ask one question at a time â€” never batch multiple questions
 - Prefer multiple choice format with 2-4 options over open-ended questions
-- For every choice presented, include brief pros and cons so the user can make an informed decision — never present bare options without trade-off context
+- For every choice presented, include brief pros and cons so the user can make an informed decision â€” never present bare options without trade-off context
 - Lead with your recommended option and explain the rationale
 - Wait for user response before proceeding to next question
 - Adapt follow-up questions based on previous answers
@@ -143,11 +143,11 @@ After the user answers each question, apply depth-gated enrichment steps before 
 
 **Quick mode**: No enrichment steps. Accept the answer and proceed to the next question. Current behavior preserved.
 
-**Standard mode**: After each user answer, state the assumptions you are making based on their response in 1-2 sentences, then ask the user to confirm or correct before proceeding. Example flow: question → answer → "Based on your answer, I'm assuming X and Y — correct?" → confirmation → next question.
+**Standard mode**: After each user answer, state the assumptions you are making based on their response in 1-2 sentences, then ask the user to confirm or correct before proceeding. Example flow: question â†’ answer â†’ "Based on your answer, I'm assuming X and Y â€” correct?" â†’ confirmation â†’ next question.
 
 **Deep mode**: After each user answer: (a) state and confirm assumptions as in Standard mode, (b) narrate the trade-offs of the choice in 1-2 sentences ("That choice means we gain A but give up B"), (c) if the answer has non-obvious implications (e.g., a technology choice that constrains future scaling options or creates a vendor lock-in dependency), ask one follow-up probing question before moving to the next topic. Cap at one follow-up per question.
 
-**Adaptive elision**: If the user's answer is concrete, specific, and requires no inference (e.g., "What language?" → "TypeScript, same as the rest of the repo"), the assumption surfacing and trade-off narration steps may be skipped even in Deep mode. Only apply enrichment when there are genuine assumptions to surface or trade-offs to narrate. Do not elide when the answer implies unstated architectural trade-offs even if the answer itself is short (e.g., "REST" implies choices about state management, versioning, and contract evolution that are worth surfacing).
+**Adaptive elision**: If the user's answer is concrete, specific, and requires no inference (e.g., "What language?" â†’ "TypeScript, same as the rest of the repo"), the assumption surfacing and trade-off narration steps may be skipped even in Deep mode. Only apply enrichment when there are genuine assumptions to surface or trade-offs to narrate. Do not elide when the answer implies unstated architectural trade-offs even if the answer itself is short (e.g., "REST" implies choices about state management, versioning, and contract evolution that are worth surfacing).
 
 ## Approach Presentation
 
@@ -189,7 +189,7 @@ For each approach, provide:
 - Accept user's choice without pushback, even if it differs from your recommendation
 
 ### Recommendation Philosophy
-- **Always identify the ideal long-term solution** — the approach that is architecturally sound, maintainable, and future-proof. Present it clearly so the user understands what "right" looks like.
+- **Always identify the ideal long-term solution** â€” the approach that is architecturally sound, maintainable, and future-proof. Present it clearly so the user understands what "right" looks like.
 - **When the long-term solution requires large-scale changes** that are disproportionate to the task at hand, also present a pragmatic alternative that accomplishes the goal without major disruption. Be explicit about the trade-off: "The ideal solution is X (because...), but a pragmatic path is Y (because the scope of X is disproportionate to the current need)."
 - **Never default to the quick fix without surfacing the long-term option.** The user should always know what they're trading away. But equally, never recommend a large-scale refactor when the task can be accomplished safely with a targeted change.
 - **Label each approach honestly**: which is the long-term investment, which is the pragmatic path, and which (if any) is a stopgap that will create debt.
@@ -238,7 +238,7 @@ Present the design document in sections, validating each before proceeding. Scal
 - **Medium** (multi-component features, API endpoints, integrations): present sections 1-3 and 6, plus up to 1 other section that surfaces meaningful trade-offs (cap at 5 total). 150-250 words each.
 - **Complex** (new subsystems, cross-cutting refactors, multi-service architectures): present all 7 sections at 200-300 words each.
 
-Never skip Problem Statement, Approach, or Risk Assessment. If you believe other sections add no value for the task, omit them — but state which sections you are skipping and why before presenting the first section.
+Never skip Problem Statement, Approach, or Risk Assessment. If you believe other sections add no value for the task, omit them â€” but state which sections you are skipping and why before presenting the first section.
 
 ### Validation Format
 
@@ -276,13 +276,13 @@ Apply depth-gated reasoning enrichment to design section content during the conv
 | Per-decision alternatives considered | No | No | Yes |
 | Requirement traceability (`Traces To`) | No | No | Yes |
 
-**Quick mode**: No reasoning annotations. Present sections as-is — current behavior preserved.
+**Quick mode**: No reasoning annotations. Present sections as-is â€” current behavior preserved.
 
-**Rationale annotations (Standard + Deep)**: For each key design decision within a section, include an inline explanation of why it was chosen, tied to specific project context from the question phase. A key decision is one that, if changed, would require reworking other parts of the design — routine or cosmetic choices (naming, formatting) are not key. Format: `[decision] — *[rationale referencing specific requirements, constraints, or user-stated preferences]*`
+**Rationale annotations (Standard + Deep)**: For each key design decision within a section, include an inline explanation of why it was chosen, tied to specific project context from the question phase. A key decision is one that, if changed, would require reworking other parts of the design â€” routine or cosmetic choices (naming, formatting) are not key. Format: `[decision] â€” *[rationale referencing specific requirements, constraints, or user-stated preferences]*`
 
-**Per-decision alternatives (Deep only)**: For key sub-decisions (choices within a section that affect the design's shape), briefly note what was considered and rejected. Format: `[decision] *(considered: [alternative A] — rejected because [reason]; [alternative B] — rejected because [reason])*`
+**Per-decision alternatives (Deep only)**: For key sub-decisions (choices within a section that affect the design's shape), briefly note what was considered and rejected. Format: `[decision] *(considered: [alternative A] â€” rejected because [reason]; [alternative B] â€” rejected because [reason])*`
 
-**Requirement traceability (Deep only)**: Tag each key decision with `Traces To: REQ-N` referencing the numbered requirement it satisfies from the design document's Requirements section. Every requirement (functional and non-functional) should be traceable to at least one design decision. If the Requirements section was omitted due to complexity guidance (simple tasks), skip requirement traceability markers — rationale annotations and per-decision alternatives still apply.
+**Requirement traceability (Deep only)**: Tag each key decision with `Traces To: REQ-N` referencing the numbered requirement it satisfies from the design document's Requirements section. Every requirement (functional and non-functional) should be traceable to at least one design decision. If the Requirements section was omitted due to complexity guidance (simple tasks), skip requirement traceability markers â€” rationale annotations and per-decision alternatives still apply.
 
 **Uniform application**: Apply the chosen depth mode's reasoning rules uniformly to every section in the convergence phase. Do not selectively skip reasoning on some sections unless the adaptive elision rule applies (the decision is self-evident and requires no justification).
 
@@ -293,7 +293,7 @@ Apply depth-gated reasoning enrichment to design section content during the conv
 The write path depends on whether Plan Mode is active:
 
 - **Plan Mode active**: Write to `~/.gemini/tmp/<project>/plans/YYYY-MM-DD-<topic-slug>-design.md` (the only writable location during Plan Mode). After `exit_plan_mode` approval in Phase 2, the orchestrator copies it to the permanent location.
-- **Plan Mode not active**: Write directly to `<state_dir>/plans/YYYY-MM-DD-<topic-slug>-design.md` (`<state_dir>` resolves from `MAESTRO_STATE_DIR`).
+- **Plan Mode not active**: Write directly to `<state_dir>/plans/YYYY-MM-DD-<topic-slug>-design.md` (`<state_dir>` resolves from `LOOM_STATE_DIR`).
 
 Where:
 - `YYYY-MM-DD` is the current date

@@ -1,13 +1,13 @@
-# Maestro Architecture Reference
+﻿# Loom Architecture Reference
 
 ## Orchestration Model
 
-Maestro is a multi-agent orchestration system that coordinates 22 specialized agents through a structured 4-phase workflow:
+Loom is a multi-agent orchestration system that coordinates 22 specialized agents through a structured 4-phase workflow:
 
-1. **Design** — Structured requirements discovery, tradeoff-backed design questions, and design approval
-2. **Plan** — Phase-based implementation planning with dependencies, file ownership, and validation gates
-3. **Execute** — Delegated execution through child agents in parallel or sequential mode
-4. **Complete** — Deliverable verification, code review gate, archival, and summary
+1. **Design** â€” Structured requirements discovery, tradeoff-backed design questions, and design approval
+2. **Plan** â€” Phase-based implementation planning with dependencies, file ownership, and validation gates
+3. **Execute** â€” Delegated execution through child agents in parallel or sequential mode
+4. **Complete** â€” Deliverable verification, code review gate, archival, and summary
 
 The TechLead orchestrator does not implement code directly. It designs, plans, delegates to specialized agents, validates results, and reports outcomes.
 
@@ -42,7 +42,7 @@ Agent names use the format specified by the runtime's Agent Naming Convention se
 
 ## State Contract
 
-Maestro maintains session state under `<state_dir>` (resolved from `MAESTRO_STATE_DIR`):
+Loom maintains session state under `<state_dir>` (resolved from `LOOM_STATE_DIR`):
 
 - **Active session**: `<state_dir>/state/active-session.md`
 - **Plans**: `<state_dir>/plans/`
@@ -50,11 +50,11 @@ Maestro maintains session state under `<state_dir>` (resolved from `MAESTRO_STAT
 
 State scripts:
 
-- `node ${extensionPath}/scripts/ensure-workspace.js <state_dir>` — initialize workspace directories
-- `node ${extensionPath}/scripts/read-active-session.js` — read current session state
-- `node ${extensionPath}/scripts/read-state.js <relative-path>` — read arbitrary state file
-- `node ${extensionPath}/scripts/write-state.js <relative-path>` — write state from stdin
-- `node ${extensionPath}/scripts/read-setting.js <SETTING_NAME>` — resolve a Maestro setting
+- `node ${extensionPath}/scripts/ensure-workspace.js <state_dir>` â€” initialize workspace directories
+- `node ${extensionPath}/scripts/read-active-session.js` â€” read current session state
+- `node ${extensionPath}/scripts/read-state.js <relative-path>` â€” read arbitrary state file
+- `node ${extensionPath}/scripts/write-state.js <relative-path>` â€” write state from stdin
+- `node ${extensionPath}/scripts/read-setting.js <SETTING_NAME>` â€” resolve a Loom setting
 
 ## Session Management
 
@@ -86,5 +86,5 @@ Every delegated agent query must include the header:
 - `Session: <session_id>`
 
 Every agent must conclude with:
-- `## Task Report` — what was done, files changed, tests run
-- `## Downstream Context` — information needed by subsequent phases
+- `## Task Report` â€” what was done, files changed, tests run
+- `## Downstream Context` â€” information needed by subsequent phases

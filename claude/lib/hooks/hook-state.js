@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const fs = require('fs');
 const path = require('path');
@@ -10,8 +10,8 @@ const { atomicWriteSync } = require('../core/atomic-write');
 const HOOK_STATE_TTL_MS = 2 * 60 * 60 * 1000;
 
 const uid = process.getuid ? process.getuid() : 'default';
-const DEFAULT_BASE_DIR = process.env.MAESTRO_HOOKS_DIR
-  || path.join(os.tmpdir(), `maestro-hooks-${uid}`);
+const DEFAULT_BASE_DIR = process.env.LOOM_HOOKS_DIR
+  || path.join(os.tmpdir(), `loom-hooks-${uid}`);
 
 function ensureBaseDir(dir) {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });

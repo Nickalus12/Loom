@@ -55,10 +55,45 @@ This primes the agent to structure their Downstream Context section for maximum 
 Before constructing any delegation prompt, resolve configurable parameters:
 
 1. Read the agent's base definition frontmatter (`temperature`, `max_turns`, `timeout_mins`, `tools`)
-2. Do not invent Maestro-level model, temperature, turn, or timeout overrides. Native delegation uses agent frontmatter defaults plus any runtime-level agent configuration already active in the session.
-3. Include only task-relevant execution context in the prompt metadata
-4. If the agent appears in `MAESTRO_DISABLED_AGENTS`, do not construct a delegation prompt — report to the orchestrator that the agent is disabled
+2. **Resolve the model tier**: 
+   - Use `getTierForAgent(agentName)` from the `agent-registry`.
+   - If tier is `HEAVY`, use `LOOM_HEAVY_MODEL` (default: `loom-heavy`).
+   - If tier is `LIGHT`, use `LOOM_LIGHT_MODEL` (default: `loom-light`).
+3. Inject the resolved model string into the subagent tool call using the `model` parameter.
+4. Include only task-relevant execution context in the prompt metadata
+5. If the agent appears in `LOOM_DISABLED_AGENTS`, do not construct a delegation prompt — report to the orchestrator that the agent is disabled
 
+## Agent Tool Dispatch Contract
+
+Every Loom agent in the Agent Roster is registered as its own tool in the runtime. When delegating a phase, call the assigned agent's tool by its exact name — the tool name matches the agent name in the roster (e.g., `coder`, `design_system_engineer`, `tester`).
+
+This is mandatory because each agent tool carries its frontmatter configuration:
+- `temperature`: Controls output determinism (e.g., coder uses 0.2 for precise code)
+- `max_turns`: Prevents runaway sessions (e.g., 25 turns for implementation agents)
+- `tools`: Restricts the agent to its authorized tool surface (e.g., read-only agents cannot call write_file)
+- Body: Contains the agent's specialized methodology and decision frameworks
+
+The built-in `generalist` tool bypasses all of this. It uses default temperature, has no turn limit, no tool restrictions, and no specialized methodology. Never use `generalist` for Loom phase delegations.
+
+**Sequential dispatch:**
+```
+coder(
+  model: "loom-heavy", # Resolved dynamically from LOOM_HEAVY_MODEL
+  query: "Agent: coder\nPhase: 2/6\nBatch: single\nSession: my-session\n\n[full delegation prompt]"
+)
+```
+
+**Parallel dispatch (contiguous calls in one turn):**
+```
+coder(
+  model: "loom-heavy",
+  query: "Agent: coder\nPhase: 2/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 2]"
+)
+ux_designer(
+  model: "loom-light", # Resolved dynamically from LOOM_LIGHT_MODEL
+  query: "Agent: ux_designer\nPhase: 3/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 3]"
+)
+```
 
 ## Delegation Prompt Template
 
@@ -153,29 +188,6 @@ Explicitly state what the agent must NOT do:
 | Design tokens, theming | `design_system_engineer` | Full read/write/shell access |
 | Legal, regulatory compliance | `compliance_reviewer` | Read + web search/fetch |
 
-## Agent Tool Dispatch Contract
-
-Every Maestro agent in the Agent Roster is registered as its own tool in the runtime. When delegating a phase, call the assigned agent's tool by its exact name — the tool name matches the agent name in the roster (e.g., `coder`, `design_system_engineer`, `tester`).
-
-This is mandatory because each agent tool carries its frontmatter configuration:
-- `temperature`: Controls output determinism (e.g., coder uses 0.2 for precise code)
-- `max_turns`: Prevents runaway sessions (e.g., 25 turns for implementation agents)
-- `tools`: Restricts the agent to its authorized tool surface (e.g., read-only agents cannot call write_file)
-- Body: Contains the agent's specialized methodology and decision frameworks
-
-The built-in `generalist` tool bypasses all of this. It uses default temperature, has no turn limit, no tool restrictions, and no specialized methodology. Never use `generalist` for Maestro phase delegations.
-
-**Sequential dispatch:**
-```
-coder(query: "Agent: coder\nPhase: 2/6\nBatch: single\nSession: my-session\n\n[full delegation prompt]")
-```
-
-**Parallel dispatch (contiguous calls in one turn):**
-```
-coder(query: "Agent: coder\nPhase: 2/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 2]")
-ux_designer(query: "Agent: ux_designer\nPhase: 3/6\nBatch: batch-1\nSession: my-session\n\n[prompt for phase 3]")
-```
-
 ## Parallel Delegation
 
 Parallel delegation uses the runtime's native subagent scheduler. The orchestrator emits contiguous agent tool calls inside a single turn; it does not write prompt files, spawn subprocesses, or call shell-based dispatch helpers.
@@ -197,7 +209,7 @@ Native parallel batches may pause if an agent asks a follow-up question. Scope p
 
 ### Tool Restriction Enforcement
 
-Maestro enforces tool permissions at two levels:
+Loom enforces tool permissions at two levels:
 
 **Level 1: Native enforcement (primary)**
 
@@ -258,20 +270,20 @@ All agents in a parallel batch must complete before:
 
 ## Hook Integration
 
-Maestro hooks fire at agent boundaries during delegation, providing context injection and output validation. Understanding hook behavior is essential for constructing correct delegation prompts.
+Loom hooks fire at agent boundaries during delegation, providing context injection and output validation. Understanding hook behavior is essential for constructing correct delegation prompts.
 
 ### Agent Tracking
 
 The `BeforeAgent` hook tracks which agent is currently executing:
 
 - Preferred signal: the required `Agent: <agent_name>` header in the delegation prompt
-- Legacy fallbacks: `MAESTRO_CURRENT_AGENT` from the environment, then regex-based detection of patterns like `delegate to <agent>` or `@<agent>`
+- Legacy fallbacks: `LOOM_CURRENT_AGENT` from the environment, then regex-based detection of patterns like `delegate to <agent>` or `@<agent>`
 
-The detected agent name is persisted to `/tmp/maestro-hooks/<session-id>/active-agent` and cleared by the `AfterAgent` hook on every allowed response (both successful validation and retry allow-through). On deny (malformed output), the active agent is preserved to enable re-validation on retry.
+The detected agent name is persisted to `/tmp/loom-hooks/<session-id>/active-agent` and cleared by the `AfterAgent` hook on every allowed response (both successful validation and retry allow-through). On deny (malformed output), the active agent is preserved to enable re-validation on retry.
 
 ### Session Context Injection
 
-When an active orchestration session exists, the `BeforeAgent` hook parses `<MAESTRO_STATE_DIR>/state/active-session.md` and injects a compact context line into the agent's turn:
+When an active orchestration session exists, the `BeforeAgent` hook parses `<LOOM_STATE_DIR>/state/active-session.md` and injects a compact context line into the agent's turn:
 
 ```
 Active session: current_phase=3, status=in_progress

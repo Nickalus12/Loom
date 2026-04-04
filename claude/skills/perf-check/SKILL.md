@@ -1,10 +1,10 @@
----
+﻿---
 name: perf-check
-description: Run a Maestro-style performance assessment for hotspots, regressions, and optimization planning
+description: Run a Loom-style performance assessment for hotspots, regressions, and optimization planning
 ---
 
 
-# Maestro Perf Check
+# Loom Perf Check
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/architecture.md`.
 

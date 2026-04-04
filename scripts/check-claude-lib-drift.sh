@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 set -euo pipefail
 
 echo "Checking shared lib/ drift between root and claude/..."
@@ -22,16 +22,16 @@ if [ -d claude/lib/mcp ]; then
 fi
 
 # Verify patched files contain both Gemini and Claude env var references
-grep -q "MAESTRO_EXTENSION_PATH" claude/lib/config/setting-resolver.js \
+grep -q "LOOM_EXTENSION_PATH" claude/lib/config/setting-resolver.js \
   && grep -q "CLAUDE_PLUGIN_ROOT" claude/lib/config/setting-resolver.js \
   || { echo "DRIFT: claude/lib/config/setting-resolver.js missing expected env vars"; exit 1; }
 
-grep -q "MAESTRO_WORKSPACE_PATH" claude/lib/core/project-root-resolver.js \
+grep -q "LOOM_WORKSPACE_PATH" claude/lib/core/project-root-resolver.js \
   && grep -q "CLAUDE_PROJECT_DIR" claude/lib/core/project-root-resolver.js \
   || { echo "DRIFT: claude/lib/core/project-root-resolver.js missing expected env vars"; exit 1; }
 
 # NOTE: templates/, references/, and README.md are intentionally different
 # between runtimes (Claude uses kebab-case agent names and ${CLAUDE_PLUGIN_ROOT}).
-# Do NOT diff these — they are runtime-specific content, not shared copies.
+# Do NOT diff these â€” they are runtime-specific content, not shared copies.
 
 echo "All drift checks passed."

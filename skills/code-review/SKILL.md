@@ -1,11 +1,11 @@
----
+﻿---
 name: code-review
 description: Standalone code review methodology for structured, severity-classified code assessment
 ---
 
 # Code Review Skill
 
-Activate this skill when performing standalone code reviews via the `/maestro:review` command or during orchestration quality gates (post-phase checks and final completion gate). This skill provides the methodology for scoping, executing, and reporting code reviews.
+Activate this skill when performing standalone code reviews via the `/loom:review` command or during orchestration quality gates (post-phase checks and final completion gate). This skill provides the methodology for scoping, executing, and reporting code reviews.
 
 ## Scope Detection Protocol
 
@@ -112,11 +112,11 @@ Do NOT report:
 Calibrate the depth and focus of review based on the type of change being reviewed:
 
 ### Calibration Rules
-- **New files**: Full review across all dimensions — architecture fit, pattern compliance, security, naming conventions, error handling, testability, dependency direction
-- **Modified files (behavior change)**: Focus on the diff — correctness of new behavior, regression risk, contract compliance with existing interfaces, edge case handling in new code paths
-- **Modified files (refactoring)**: Focus on behavior preservation — verify same inputs produce same outputs, no unintended side effects introduced, no behavior changes disguised as refactoring
-- **Deleted files**: Dependency verification — confirm no remaining code imports from, references, or depends on the deleted files. Check for orphaned tests that tested the deleted code.
-- **Configuration changes**: Environment impact assessment — does this change affect production? Staging? Local development? All environments? Are there secrets or credentials involved?
+- **New files**: Full review across all dimensions â€” architecture fit, pattern compliance, security, naming conventions, error handling, testability, dependency direction
+- **Modified files (behavior change)**: Focus on the diff â€” correctness of new behavior, regression risk, contract compliance with existing interfaces, edge case handling in new code paths
+- **Modified files (refactoring)**: Focus on behavior preservation â€” verify same inputs produce same outputs, no unintended side effects introduced, no behavior changes disguised as refactoring
+- **Deleted files**: Dependency verification â€” confirm no remaining code imports from, references, or depends on the deleted files. Check for orphaned tests that tested the deleted code.
+- **Configuration changes**: Environment impact assessment â€” does this change affect production? Staging? Local development? All environments? Are there secrets or credentials involved?
 
 ### Application
 When reviewing a diff that contains multiple change types (new files + modifications + deletions), apply the appropriate calibration to each file independently. Do not apply "new file" depth to a file that only had a minor modification.
@@ -126,7 +126,7 @@ When reviewing a diff that contains multiple change types (new files + modificat
 When reviewing multiple files, identify and consolidate findings that share the same root cause.
 
 ### Deduplication Rules
-- If the same pattern violation appears in 3+ files, report it **once** as a systemic finding with the list of all affected locations — not as N separate findings
+- If the same pattern violation appears in 3+ files, report it **once** as a systemic finding with the list of all affected locations â€” not as N separate findings
 - A systemic finding includes: the pattern being violated, why it matters, the full list of affected file:line locations, and a single remediation recommendation that addresses all instances
 - Unique findings (appearing in only 1-2 files) are reported individually as normal
 
@@ -136,9 +136,9 @@ When reviewing multiple files, identify and consolidate findings that share the 
 - **Severity**: [Critical | Major | Minor | Suggestion]
 - **Description**: [What the pattern violation is and why it matters]
 - **Affected Locations**:
-  - `path/to/file1.ext:line` — [brief context]
-  - `path/to/file2.ext:line` — [brief context]
-  - `path/to/file3.ext:line` — [brief context]
+  - `path/to/file1.ext:line` â€” [brief context]
+  - `path/to/file2.ext:line` â€” [brief context]
+  - `path/to/file3.ext:line` â€” [brief context]
 - **Remediation**: [Single recommendation that addresses all instances]
 ```
 

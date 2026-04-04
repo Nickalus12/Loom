@@ -1,8 +1,8 @@
-{
+﻿{
   "mcpServers": {
-    "maestro": {
+    "loom": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/maestro-server.js"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/loom-server.js"],
       "cwd": "${CLAUDE_PLUGIN_ROOT}"
     }
   }

@@ -1,36 +1,36 @@
----
+﻿---
 name: session-management
 description: Manages orchestration session state, tracking, and resumption
 ---
 
 # Session Management Skill
 
-Activate this skill for all session state operations during Maestro orchestration. This skill defines the protocols for creating, updating, resuming, and archiving orchestration sessions.
+Activate this skill for all session state operations during Loom orchestration. This skill defines the protocols for creating, updating, resuming, and archiving orchestration sessions.
 
 ## State Access Protocol
 
 When MCP state tools are available, prefer them for state operations:
-- **Preferred**: MCP tools (`initialize_workspace`, `create_session`, `update_session`, `transition_phase`, `get_session_status`, `archive_session`) — structured I/O, atomic operations.
-- **Fallback**: `write_file`/`replace` directly on state files — when MCP tools are not in the available tool list.
-- **Legacy**: Shell scripts (`write-state.js`, `read-state.js`) — remain available but are not the recommended path.
+- **Preferred**: MCP tools (`initialize_workspace`, `create_session`, `update_session`, `transition_phase`, `get_session_status`, `archive_session`) â€” structured I/O, atomic operations.
+- **Fallback**: `write_file`/`replace` directly on state files â€” when MCP tools are not in the available tool list.
+- **Legacy**: Shell scripts (`write-state.js`, `read-state.js`) â€” remain available but are not the recommended path.
 
 Detection: check whether MCP state tools appear in your available tools. If they do, use them. If they do not, use `write_file`/`replace`.
 
 ## Hook-Level Session State
 
-Maestro hooks maintain a separate, transient state directory at `/tmp/maestro-hooks/<session-id>/` that is distinct from orchestration state in `<MAESTRO_STATE_DIR>`:
+Loom hooks maintain a separate, transient state directory at `/tmp/loom-hooks/<session-id>/` that is distinct from orchestration state in `<LOOM_STATE_DIR>`:
 
 | Concern | Orchestration State | Hook State |
 | --- | --- | --- |
-| Location | `<MAESTRO_STATE_DIR>/state/` | `/tmp/maestro-hooks/<session-id>/` (Unix) or `<os.tmpdir()>/maestro-hooks/<session-id>/` (Windows) |
+| Location | `<LOOM_STATE_DIR>/state/` | `/tmp/loom-hooks/<session-id>/` (Unix) or `<os.tmpdir()>/loom-hooks/<session-id>/` (Windows) |
 | Lifecycle | Created in Phase 2, archived in Phase 4 | Directory created by `SessionStart` when an active session exists; active-agent file written by `BeforeAgent` and cleared by `AfterAgent`; stale directories pruned by both `SessionStart` and `BeforeAgent` |
 | Contents | Session metadata, phase tracking, token usage, file manifests | Active agent tracking file (`active-agent`) |
-| Persistence | Survives session restarts (supports `/maestro:resume`) | Ephemeral — lost on session end or system reboot |
+| Persistence | Survives session restarts (supports `/loom:resume`) | Ephemeral â€” lost on session end or system reboot |
 | Managed by | Orchestrator via session-management skill | The runtime's pre-delegation and post-delegation hooks |
 
 The `BeforeAgent` prunes stale hook state directories older than 2 hours to prevent accumulation from abnormal session terminations.
 
-The orchestrator does not read or write hook-level state directly. It interacts only with `<MAESTRO_STATE_DIR>` paths. The two state systems are independent and serve different concerns.
+The orchestrator does not read or write hook-level state directly. It interacts only with `<LOOM_STATE_DIR>` paths. The two state systems are independent and serve different concerns.
 
 ## Session Creation Protocol
 
@@ -45,13 +45,13 @@ Where:
 - `<topic-slug>` is a lowercase, hyphenated summary matching the design document topic
 
 ### File Location
-`<MAESTRO_STATE_DIR>/state/active-session.md`
+`<LOOM_STATE_DIR>/state/active-session.md`
 
-All state paths in this skill use `<MAESTRO_STATE_DIR>` as their base directory. In procedural steps, `<state_dir>` represents the resolved value of this variable.
+All state paths in this skill use `<LOOM_STATE_DIR>` as their base directory. In procedural steps, `<state_dir>` represents the resolved value of this variable.
 
 ### State File Access
 
-Both `read_file` and `write_file` work on state paths inside `<MAESTRO_STATE_DIR>`. The runtime's file-access configuration makes state paths accessible.
+Both `read_file` and `write_file` work on state paths inside `<LOOM_STATE_DIR>`. The runtime's file-access configuration makes state paths accessible.
 
 Use `${extensionPath}/scripts/` for script locations so these commands work even when the extension is installed outside the workspace root.
 
@@ -70,9 +70,9 @@ Use `write_file` directly. When content must be piped from a shell command, use 
 - Both scripts validate against absolute paths and path traversal
 
 ### Initialization Steps
-1. Resolve state directory from `MAESTRO_STATE_DIR`
-2. Create `<state_dir>/state/` directory if it does not exist (defense-in-depth fallback — workspace readiness startup check is the primary mechanism)
-3. Verify no existing `active-session.md` — if one exists, alert the user and offer to archive or resume
+1. Resolve state directory from `LOOM_STATE_DIR`
+2. Create `<state_dir>/state/` directory if it does not exist (defense-in-depth fallback â€” workspace readiness startup check is the primary mechanism)
+3. Verify no existing `active-session.md` â€” if one exists, alert the user and offer to archive or resume
 4. Generate session state using the template from `templates/session-state.md`
 5. Initialize all phases as `pending`
 6. Set overall status to `in_progress`
@@ -209,14 +209,14 @@ Status indicators:
 
 ### When to Archive
 Archive session state when:
-- All phases are completed successfully AND `MAESTRO_AUTO_ARCHIVE` is `true` (default)
-- User explicitly requests archival (regardless of `MAESTRO_AUTO_ARCHIVE` setting)
+- All phases are completed successfully AND `LOOM_AUTO_ARCHIVE` is `true` (default)
+- User explicitly requests archival (regardless of `LOOM_AUTO_ARCHIVE` setting)
 - User starts a new orchestration (previous session must be archived first, regardless of setting)
 
-When `MAESTRO_AUTO_ARCHIVE` is `false`, prompt the user after successful completion: "Session complete. Auto-archive is disabled. Would you like to archive this session?"
+When `LOOM_AUTO_ARCHIVE` is `false`, prompt the user after successful completion: "Session complete. Auto-archive is disabled. Would you like to archive this session?"
 
 ### Archive Steps
-If `archive_session` appears in your available tools, use it — a single call handles all archival:
+If `archive_session` appears in your available tools, use it â€” a single call handles all archival:
 1. Call `archive_session` with the session ID. The MCP tool atomically:
    - Updates session status to `completed`
    - Moves `active-session.md` to `<state_dir>/state/archive/<session-id>.md`
@@ -227,11 +227,11 @@ If `archive_session` appears in your available tools, use it — a single call h
 If `archive_session` is not available, fall back to manual file operations:
 1. Create `<state_dir>/plans/archive/` directory if it does not exist
 2. Create `<state_dir>/state/archive/` directory if it does not exist
-3. **MOVE** (not copy) design document from `<state_dir>/plans/` to `<state_dir>/plans/archive/` — the original MUST be deleted. Use `run_shell_command` with `mv` or read+write+delete. Do NOT leave the file in both locations. **Skip this step if `design_document` is `null` (Express sessions).**
-4. **MOVE** (not copy) implementation plan from `<state_dir>/plans/` to `<state_dir>/plans/archive/` — same: delete the original. **Skip this step if `implementation_plan` is `null` (Express sessions).**
+3. **MOVE** (not copy) design document from `<state_dir>/plans/` to `<state_dir>/plans/archive/` â€” the original MUST be deleted. Use `run_shell_command` with `mv` or read+write+delete. Do NOT leave the file in both locations. **Skip this step if `design_document` is `null` (Express sessions).**
+4. **MOVE** (not copy) implementation plan from `<state_dir>/plans/` to `<state_dir>/plans/archive/` â€” same: delete the original. **Skip this step if `implementation_plan` is `null` (Express sessions).**
 5. Update session state `status` to `completed`
 6. Update `updated` timestamp
-7. **MOVE** (not copy) `active-session.md` from `<state_dir>/state/` to `<state_dir>/state/archive/<session-id>.md` — delete the original.
+7. **MOVE** (not copy) `active-session.md` from `<state_dir>/state/` to `<state_dir>/state/archive/<session-id>.md` â€” delete the original.
 8. Confirm archival to user with summary of what was archived
 
 ### Archive Verification
@@ -239,16 +239,16 @@ After archival, verify ALL of the following (archive is incomplete if any check 
 - No `active-session.md` exists in `<state_dir>/state/`
 - No plan files remain in `<state_dir>/plans/` (only the `archive/` subdirectory should be present)
 - Archived files are readable at their new locations in `archive/`
-- If files still exist in the original locations, delete them now — the archive step used copy instead of move
+- If files still exist in the original locations, delete them now â€” the archive step used copy instead of move
 
 ## Resume Protocol
 
 ### When to Resume
-Resume is triggered by the `/maestro:resume` command or when `/maestro:orchestrate` detects an existing active session.
+Resume is triggered by the `/loom:resume` command or when `/loom:orchestrate` detects an existing active session.
 
 ### Resume Steps
 
-1. **Read State**: If session state was already injected into the prompt (e.g., via `/maestro:resume`), use that injected content instead of calling `get_session_status`. Otherwise, if `get_session_status` appears in your available tools, call it to read the active session. Otherwise, read state via `run_shell_command`: `node ${extensionPath}/scripts/read-active-session.js` (resolves `MAESTRO_STATE_DIR` internally)
+1. **Read State**: If session state was already injected into the prompt (e.g., via `/loom:resume`), use that injected content instead of calling `get_session_status`. Otherwise, if `get_session_status` appears in your available tools, call it to read the active session. Otherwise, read state via `run_shell_command`: `node ${extensionPath}/scripts/read-active-session.js` (resolves `LOOM_STATE_DIR` internally)
 2. **Parse Frontmatter**: Extract YAML frontmatter for session metadata
 3. **Identify Position**: Determine:
    - Last completed phase (highest ID with `status: completed`)

@@ -1,10 +1,10 @@
----
+﻿---
 name: seo-audit
-description: Run a Maestro-style SEO assessment for meta tags, structured data, crawlability, and Core Web Vitals
+description: Run a Loom-style SEO assessment for meta tags, structured data, crawlability, and Core Web Vitals
 ---
 
 
-# Maestro SEO Audit
+# Loom SEO Audit
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/architecture.md`.
 

@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
@@ -8819,7 +8819,7 @@ var require_ca = __commonJS({
             return `Clau inv\xE0lida a ${issue.origin}`;
           case "invalid_union":
             return "Entrada inv\xE0lida";
-          // Could also be "Tipus d'unió invàlid" but "Entrada invàlida" is more general
+          // Could also be "Tipus d'uniÃ³ invÃ lid" but "Entrada invÃ lida" is more general
           case "invalid_element":
             return `Element inv\xE0lid a ${issue.origin}`;
           default:
@@ -22096,7 +22096,7 @@ var require_types2 = __commonJS({
       /** Intended for programmatic or logical use, but used as a display name in past specs or fallback */
       name: z.string(),
       /**
-       * Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
+       * Intended for UI and end-user contexts â€” optimized to be human-readable and easily understood,
        * even by those unfamiliar with domain-specific terminology.
        *
        * If not provided, the name should be used for display (except for Tool,
@@ -33849,12 +33849,12 @@ var require_stdio2 = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/core/logger.js
+// plugins/loom/src/lib/core/logger.js
 var require_logger = __commonJS({
-  "plugins/maestro/src/lib/core/logger.js"(exports2, module2) {
+  "plugins/loom/src/lib/core/logger.js"(exports2, module2) {
     "use strict";
     function log2(level, message) {
-      process.stderr.write(`[${level}] maestro: ${message}
+      process.stderr.write(`[${level}] loom: ${message}
 `);
     }
     function fatal(message) {
@@ -33866,14 +33866,14 @@ var require_logger = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/core/project-root-resolver.js
+// plugins/loom/src/lib/core/project-root-resolver.js
 var require_project_root_resolver = __commonJS({
-  "plugins/maestro/src/lib/core/project-root-resolver.js"(exports2, module2) {
+  "plugins/loom/src/lib/core/project-root-resolver.js"(exports2, module2) {
     "use strict";
     var { execSync } = require("child_process");
     function resolveProjectRoot2() {
-      if (process.env.MAESTRO_WORKSPACE_PATH && !process.env.MAESTRO_WORKSPACE_PATH.includes("${")) {
-        return process.env.MAESTRO_WORKSPACE_PATH;
+      if (process.env.LOOM_WORKSPACE_PATH && !process.env.LOOM_WORKSPACE_PATH.includes("${")) {
+        return process.env.LOOM_WORKSPACE_PATH;
       }
       try {
         return execSync("git rev-parse --show-toplevel", {
@@ -33888,9 +33888,9 @@ var require_project_root_resolver = __commonJS({
   }
 });
 
-// plugins/maestro/src/mcp/roots-discovery.js
+// plugins/loom/src/mcp/roots-discovery.js
 var require_roots_discovery = __commonJS({
-  "plugins/maestro/src/mcp/roots-discovery.js"(exports2, module2) {
+  "plugins/loom/src/mcp/roots-discovery.js"(exports2, module2) {
     "use strict";
     var { fileURLToPath } = require("url");
     var { log: log2 } = require_logger();
@@ -33911,9 +33911,9 @@ var require_roots_discovery = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/core/atomic-write.js
+// plugins/loom/src/lib/core/atomic-write.js
 var require_atomic_write = __commonJS({
-  "plugins/maestro/src/lib/core/atomic-write.js"(exports2, module2) {
+  "plugins/loom/src/lib/core/atomic-write.js"(exports2, module2) {
     "use strict";
     var fs = require("fs");
     var path = require("path");
@@ -33936,14 +33936,14 @@ var require_atomic_write = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/state/session-state.js
+// plugins/loom/src/lib/state/session-state.js
 var require_session_state = __commonJS({
-  "plugins/maestro/src/lib/state/session-state.js"(exports2, module2) {
+  "plugins/loom/src/lib/state/session-state.js"(exports2, module2) {
     "use strict";
     var fs = require("fs");
     var path = require("path");
     var { atomicWriteSync } = require_atomic_write();
-    var DEFAULT_STATE_DIR = "docs/maestro";
+    var DEFAULT_STATE_DIR = "docs/loom";
     function validateRelativePath(filePath) {
       if (path.isAbsolute(filePath)) {
         throw new Error("Path must be relative");
@@ -33965,7 +33965,7 @@ var require_session_state = __commonJS({
       return resolved;
     }
     function resolveStateDirPath(cwd, stateDirOverride) {
-      const stateDir = stateDirOverride || process.env.MAESTRO_STATE_DIR || DEFAULT_STATE_DIR;
+      const stateDir = stateDirOverride || process.env.LOOM_STATE_DIR || DEFAULT_STATE_DIR;
       const base = cwd || process.cwd();
       if (path.isAbsolute(stateDir)) {
         return validateContainment(stateDir, base);
@@ -34041,9 +34041,9 @@ var require_session_state = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/core/env-file-parser.js
+// plugins/loom/src/lib/core/env-file-parser.js
 var require_env_file_parser = __commonJS({
-  "plugins/maestro/src/lib/core/env-file-parser.js"(exports2, module2) {
+  "plugins/loom/src/lib/core/env-file-parser.js"(exports2, module2) {
     "use strict";
     var fs = require("fs");
     function trimQuotes(value) {
@@ -34131,9 +34131,9 @@ var require_env_file_parser = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/config/setting-resolver.js
+// plugins/loom/src/lib/config/setting-resolver.js
 var require_setting_resolver = __commonJS({
-  "plugins/maestro/src/lib/config/setting-resolver.js"(exports2, module2) {
+  "plugins/loom/src/lib/config/setting-resolver.js"(exports2, module2) {
     "use strict";
     var path = require("path");
     var { parseEnvFile } = require_env_file_parser();
@@ -34142,7 +34142,7 @@ var require_setting_resolver = __commonJS({
       if (envValue !== void 0 && envValue !== "") return envValue;
       const projectEnv = parseEnvFile(path.join(projectRoot, ".env"));
       if (projectEnv[varName] !== void 0 && projectEnv[varName] !== "") return projectEnv[varName];
-      const extensionRoot = process.env.MAESTRO_EXTENSION_PATH;
+      const extensionRoot = process.env.LOOM_EXTENSION_PATH;
       if (extensionRoot) {
         const extEnv = parseEnvFile(path.join(extensionRoot, ".env"));
         if (extEnv[varName] !== void 0 && extEnv[varName] !== "") return extEnv[varName];
@@ -34153,16 +34153,16 @@ var require_setting_resolver = __commonJS({
   }
 });
 
-// plugins/maestro/src/mcp/handlers/initialize-workspace.js
+// plugins/loom/src/mcp/handlers/initialize-workspace.js
 var require_initialize_workspace = __commonJS({
-  "plugins/maestro/src/mcp/handlers/initialize-workspace.js"(exports2, module2) {
+  "plugins/loom/src/mcp/handlers/initialize-workspace.js"(exports2, module2) {
     "use strict";
     var { ensureWorkspace, resolveStateDirPath } = require_session_state();
     var { resolveSetting } = require_setting_resolver();
     var fs = require("fs");
     var path = require("path");
     function handleInitializeWorkspace2(params, projectRoot) {
-      const stateDir = params.state_dir || resolveSetting("MAESTRO_STATE_DIR", projectRoot) || "docs/maestro";
+      const stateDir = params.state_dir || resolveSetting("LOOM_STATE_DIR", projectRoot) || "docs/loom";
       const fullPath = resolveStateDirPath(projectRoot, stateDir);
       const alreadyExisted = fs.existsSync(path.join(fullPath, "state"));
       ensureWorkspace(stateDir, projectRoot);
@@ -34178,9 +34178,9 @@ var require_initialize_workspace = __commonJS({
   }
 });
 
-// plugins/maestro/src/mcp/handlers/assess-task-complexity.js
+// plugins/loom/src/mcp/handlers/assess-task-complexity.js
 var require_assess_task_complexity = __commonJS({
-  "plugins/maestro/src/mcp/handlers/assess-task-complexity.js"(exports2, module2) {
+  "plugins/loom/src/mcp/handlers/assess-task-complexity.js"(exports2, module2) {
     "use strict";
     var fs = require("fs");
     var path = require("path");
@@ -34276,9 +34276,9 @@ var require_assess_task_complexity = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/core/agent-registry.js
+// plugins/loom/src/lib/core/agent-registry.js
 var require_agent_registry = __commonJS({
-  "plugins/maestro/src/lib/core/agent-registry.js"(exports2, module2) {
+  "plugins/loom/src/lib/core/agent-registry.js"(exports2, module2) {
     "use strict";
     var KNOWN_AGENTS = Object.freeze([
       "architect",
@@ -34351,7 +34351,7 @@ var require_agent_registry = __commonJS({
           return headerAgent;
         }
       }
-      const envAgent = normalizeAgentName(process.env.MAESTRO_CURRENT_AGENT);
+      const envAgent = normalizeAgentName(process.env.LOOM_CURRENT_AGENT);
       if (envAgent && KNOWN_AGENTS.includes(envAgent)) return envAgent;
       if (!prompt) return "";
       const lower = prompt.toLowerCase();
@@ -34374,9 +34374,9 @@ var require_agent_registry = __commonJS({
   }
 });
 
-// plugins/maestro/src/mcp/handlers/validate-plan.js
+// plugins/loom/src/mcp/handlers/validate-plan.js
 var require_validate_plan = __commonJS({
-  "plugins/maestro/src/mcp/handlers/validate-plan.js"(exports2, module2) {
+  "plugins/loom/src/mcp/handlers/validate-plan.js"(exports2, module2) {
     "use strict";
     var { KNOWN_AGENTS, normalizeAgentName, getAgentCapability, canCreateFiles } = require_agent_registry();
     var PHASE_LIMITS = { simple: 3, medium: 5, complex: Infinity };
@@ -37367,9 +37367,9 @@ var require_js_yaml = __commonJS({
   }
 });
 
-// plugins/maestro/src/lib/state/session-id-validator.js
+// plugins/loom/src/lib/state/session-id-validator.js
 var require_session_id_validator = __commonJS({
-  "plugins/maestro/src/lib/state/session-id-validator.js"(exports2, module2) {
+  "plugins/loom/src/lib/state/session-id-validator.js"(exports2, module2) {
     "use strict";
     var SESSION_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
     function validateSessionId(id) {
@@ -37380,9 +37380,9 @@ var require_session_id_validator = __commonJS({
   }
 });
 
-// plugins/maestro/src/mcp/handlers/session-state-tools.js
+// plugins/loom/src/mcp/handlers/session-state-tools.js
 var require_session_state_tools = __commonJS({
-  "plugins/maestro/src/mcp/handlers/session-state-tools.js"(exports2, module2) {
+  "plugins/loom/src/mcp/handlers/session-state-tools.js"(exports2, module2) {
     "use strict";
     var fs = require("fs");
     var path = require("path");
@@ -37647,19 +37647,19 @@ ${bodyContent || ""}`;
   }
 });
 
-// plugins/maestro/src/mcp/handlers/resolve-settings.js
+// plugins/loom/src/mcp/handlers/resolve-settings.js
 var require_resolve_settings = __commonJS({
-  "plugins/maestro/src/mcp/handlers/resolve-settings.js"(exports2, module2) {
+  "plugins/loom/src/mcp/handlers/resolve-settings.js"(exports2, module2) {
     "use strict";
     var { resolveSetting } = require_setting_resolver();
     var KNOWN_SETTINGS = [
-      "MAESTRO_DISABLED_AGENTS",
-      "MAESTRO_MAX_RETRIES",
-      "MAESTRO_AUTO_ARCHIVE",
-      "MAESTRO_VALIDATION_STRICTNESS",
-      "MAESTRO_STATE_DIR",
-      "MAESTRO_MAX_CONCURRENT",
-      "MAESTRO_EXECUTION_MODE"
+      "LOOM_DISABLED_AGENTS",
+      "LOOM_MAX_RETRIES",
+      "LOOM_AUTO_ARCHIVE",
+      "LOOM_VALIDATION_STRICTNESS",
+      "LOOM_STATE_DIR",
+      "LOOM_MAX_CONCURRENT",
+      "LOOM_EXECUTION_MODE"
     ];
     function handleResolveSettings2(params, projectRoot) {
       const requested = Array.isArray(params.settings) && params.settings.length > 0 ? params.settings.filter((name) => KNOWN_SETTINGS.includes(name)) : KNOWN_SETTINGS;
@@ -37668,8 +37668,8 @@ var require_resolve_settings = __commonJS({
         settings[name] = resolveSetting(name, projectRoot) ?? null;
       }
       const result = { settings };
-      if (settings.MAESTRO_DISABLED_AGENTS !== void 0) {
-        const raw = settings.MAESTRO_DISABLED_AGENTS;
+      if (settings.LOOM_DISABLED_AGENTS !== void 0) {
+        const raw = settings.LOOM_DISABLED_AGENTS;
         result.disabled_agents = raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
       }
       return result;
@@ -37678,67 +37678,7 @@ var require_resolve_settings = __commonJS({
   }
 });
 
-// plugins/maestro/src/mcp/handlers/get-skill-content.js
-var require_get_skill_content = __commonJS({
-  "plugins/maestro/src/mcp/handlers/get-skill-content.js"(exports2, module2) {
-    "use strict";
-    var fs2 = require("fs");
-    var path2 = require("path");
-    var RESOURCE_ALLOWLIST2 = Object.freeze({
-      "delegation": "skills/delegation/SKILL.md",
-      "execution": "skills/execution/SKILL.md",
-      "validation": "skills/validation/SKILL.md",
-      "session-management": "skills/session-management/SKILL.md",
-      "implementation-planning": "skills/implementation-planning/SKILL.md",
-      "code-review": "skills/code-review/SKILL.md",
-      "design-dialogue": "skills/design-dialogue/SKILL.md",
-      "agent-base-protocol": "skills/delegation/protocols/agent-base-protocol.md",
-      "filesystem-safety-protocol": "skills/delegation/protocols/filesystem-safety-protocol.md",
-      "design-document": "templates/design-document.md",
-      "implementation-plan": "templates/implementation-plan.md",
-      "session-state": "templates/session-state.md",
-      "architecture": "references/architecture.md",
-      "orchestration-steps": "references/orchestration-steps.md"
-    });
-    function resolveExtensionRoot2() {
-      if (process.env.MAESTRO_EXTENSION_PATH) {
-        return process.env.MAESTRO_EXTENSION_PATH;
-      }
-      var serverFile = process.argv[1];
-      if (serverFile) {
-        return path2.resolve(path2.dirname(serverFile), "..");
-      }
-      return process.cwd();
-    }
-    function handleGetSkillContent2(params) {
-      var resources = params.resources;
-      if (!Array.isArray(resources) || resources.length === 0) {
-        throw new Error("resources must be a non-empty array of resource identifiers");
-      }
-      var extensionRoot = resolveExtensionRoot2();
-      var contents = {};
-      var errors = {};
-      for (var i = 0; i < resources.length; i++) {
-        var id = resources[i];
-        var relativePath = RESOURCE_ALLOWLIST2[id];
-        if (!relativePath) {
-          errors[id] = 'Unknown resource identifier: "' + id + '". Known identifiers: ' + Object.keys(RESOURCE_ALLOWLIST2).join(", ");
-          continue;
-        }
-        var absolutePath = path2.join(extensionRoot, relativePath);
-        try {
-          contents[id] = fs2.readFileSync(absolutePath, "utf8");
-        } catch (err) {
-          errors[id] = "Failed to read resource \"" + id + "\": " + (err.code || "UNKNOWN");
-        }
-      }
-      return { contents: contents, errors: errors };
-    }
-    module2.exports = { handleGetSkillContent: handleGetSkillContent2, RESOURCE_ALLOWLIST: RESOURCE_ALLOWLIST2 };
-  }
-});
-
-// plugins/maestro/src/mcp/maestro-server.js
+// plugins/loom/src/mcp/loom-server.js
 var { Server } = require_server2();
 var { StdioServerTransport } = require_stdio2();
 var { ListToolsRequestSchema, CallToolRequestSchema, RootsListChangedNotificationSchema } = require_types2();
@@ -37779,7 +37719,7 @@ function getProjectRoot() {
   return cachedProjectRoot;
 }
 var server = new Server(
-  { name: "maestro", version: "1.4.0" },
+  { name: "loom", version: "1.4.0" },
   { capabilities: { tools: {} } }
 );
 server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
@@ -37814,11 +37754,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 var { handleInitializeWorkspace } = require_initialize_workspace();
 registerTool({
   name: "initialize_workspace",
-  description: "Initialize Maestro workspace directories (state, plans, archives). Idempotent.",
+  description: "Initialize Loom workspace directories (state, plans, archives). Idempotent.",
   inputSchema: {
     type: "object",
     properties: {
-      state_dir: { type: "string", description: "State directory relative to project root. Defaults to docs/maestro." }
+      state_dir: { type: "string", description: "State directory relative to project root. Defaults to docs/loom." }
     }
   }
 }, handleInitializeWorkspace);
@@ -37849,7 +37789,7 @@ registerTool({
 var { handleCreateSession, handleGetSessionStatus, handleTransitionPhase, handleArchiveSession, handleUpdateSession } = require_session_state_tools();
 registerTool({
   name: "create_session",
-  description: "Create a new Maestro orchestration session.",
+  description: "Create a new Loom orchestration session.",
   inputSchema: {
     type: "object",
     properties: {
@@ -37923,34 +37863,18 @@ registerTool({
 var { handleResolveSettings } = require_resolve_settings();
 registerTool({
   name: "resolve_settings",
-  description: "Resolve Maestro settings using script-accurate precedence (env var > workspace .env > extension .env). Returns resolved values for requested or all known settings.",
+  description: "Resolve Loom settings using script-accurate precedence (env var > workspace .env > extension .env). Returns resolved values for requested or all known settings.",
   inputSchema: {
     type: "object",
     properties: {
       settings: {
         type: "array",
         items: { type: "string" },
-        description: 'Setting names to resolve (e.g., ["MAESTRO_DISABLED_AGENTS"]). If empty or omitted, resolves all known settings.'
+        description: 'Setting names to resolve (e.g., ["LOOM_DISABLED_AGENTS"]). If empty or omitted, resolves all known settings.'
       }
     }
   }
 }, handleResolveSettings);
-var { handleGetSkillContent } = require_get_skill_content();
-registerTool({
-  name: "get_skill_content",
-  description: "Read one or more Maestro skill files, delegation protocols, templates, or reference documents by identifier. Returns file contents keyed by identifier. Use this instead of read_file for extension-internal resources.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      resources: {
-        type: "array",
-        items: { type: "string" },
-        description: 'Resource identifiers to read. Skills: "delegation", "execution", "validation", "session-management", "implementation-planning", "code-review", "design-dialogue". Protocols: "agent-base-protocol", "filesystem-safety-protocol". Templates: "design-document", "implementation-plan", "session-state". References: "architecture".'
-      }
-    },
-    required: ["resources"]
-  }
-}, handleGetSkillContent);
 async function main() {
   log("info", "MCP server starting");
   const transport = new StdioServerTransport();

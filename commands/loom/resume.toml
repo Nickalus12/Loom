@@ -1,6 +1,6 @@
 description = "Resume an interrupted orchestration session"
 
-prompt = """Resume the Maestro orchestration session.
+prompt = """Resume the Loom orchestration session.
 
 <user-request>
 {{args}}
@@ -14,7 +14,7 @@ Activate the `session-management` and `execution` skills.
 The current session state is provided below:
 
 <session-state>
-!{extension_root="${MAESTRO_EXTENSION_PATH:-$HOME/.gemini/extensions/maestro}"; script="$extension_root/scripts/read-active-session.js"; if [[ -f "$script" ]]; then node "$script"; else echo "No active session"; fi}
+!{extension_root="${LOOM_EXTENSION_PATH:-$HOME/.gemini/extensions/loom}"; script="$extension_root/scripts/read-active-session.js"; if [[ -f "$script" ]]; then node "$script"; else echo "No active session"; fi}
 </session-state>
 
 Use the injected session state above as the source of truth for token usage and resume position.
@@ -38,11 +38,11 @@ Do NOT call `get_internal_docs` or any repo-grounding/research tool to answer to
 6. Activate the `delegation` skill when delegating to subagents
 7. Activate the `validation` skill to verify phase outputs
 
-If the session state above shows "No active session", inform the user and suggest using `/maestro:orchestrate` to start one.
+If the session state above shows "No active session", inform the user and suggest using `/loom:orchestrate` to start one.
 
 ---
 
-# Maestro Resume
+# Loom Resume
 
 Read `${extensionPath}/references/architecture.md` and `${extensionPath}/templates/session-state.md`.
 
@@ -53,7 +53,7 @@ Read `${extensionPath}/references/architecture.md` and `${extensionPath}/templat
 3. Identify unresolved errors and partial work before continuing.
 3b. **Check Workflow Mode**: If `workflow_mode` is `express` in session state, follow the Express Resume protocol from the Express Workflow section in the orchestrator template. Do not resolve the execution-mode gate — Express bypasses it. Skip the remaining Standard resume steps below.
 4. If `execution_mode` is missing from session state, resolve the execution-mode gate before any further implementation delegation:
-   - read `MAESTRO_EXECUTION_MODE`; treat the effective default as `ask`
+   - read `LOOM_EXECUTION_MODE`; treat the effective default as `ask`
    - if the effective mode is `ask`, use `ask_user with type: 'choice'` to ask for `parallel` versus `sequential` execution based on the remaining plan
 5. Resume from the first failed or pending phase after confirming the intended next action.
 6. Continue execution through child agents via `native subagent call` using the recorded mode.
@@ -64,5 +64,5 @@ Read `${extensionPath}/references/architecture.md` and `${extensionPath}/templat
 ## Constraints
 
 - Treat missing or stale active-session state as a user-facing issue; do not fabricate session data.
-- Preserve the existing Maestro phase history instead of rewriting it from scratch.
+- Preserve the existing Loom phase history instead of rewriting it from scratch.
 - Do not silently continue execution in the parent session if child-agent delegation was expected. Main-context implementation is fallback only and requires explicit user approval."""

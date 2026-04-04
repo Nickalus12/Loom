@@ -1,10 +1,10 @@
----
+﻿---
 name: security-audit
-description: Run a Maestro-style security assessment for authentication, authorization, data exposure, secret handling, and exploitability risks
+description: Run a Loom-style security assessment for authentication, authorization, data exposure, secret handling, and exploitability risks
 ---
 
 
-# Maestro Security Audit
+# Loom Security Audit
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/architecture.md`.
 

@@ -1,10 +1,10 @@
----
+﻿---
 name: a11y-audit
-description: Run a Maestro-style accessibility audit for WCAG compliance, ARIA usage, keyboard navigation, and screen reader compatibility
+description: Run a Loom-style accessibility audit for WCAG compliance, ARIA usage, keyboard navigation, and screen reader compatibility
 ---
 
 
-# Maestro Accessibility Audit
+# Loom Accessibility Audit
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/architecture.md`.
 
