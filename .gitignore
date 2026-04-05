@@ -47,3 +47,8 @@ temp/
 docs/loom/state/
 
 hooks/permissions.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class

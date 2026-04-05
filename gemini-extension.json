@@ -51,14 +51,19 @@
     }
   ],
   "mcpServers": {
-    "loom": {
-      "command": "node",
+    "loom-swarm": {
+      "command": "uv",
       "args": [
-        "${extensionPath}/mcp/loom-server.js"
+        "run",
+        "--package",
+        "loom",
+        "python",
+        "-m",
+        "loom.server"
       ],
       "cwd": "${extensionPath}",
       "env": {
-        "LOOM_WORKSPACE_PATH": "${workspacePath}"
+        "PYTHONPATH": "${extensionPath}/src"
       }
     }
   }

@@ -1,0 +1,29 @@
+model_list:
+  # HEAVY TIER: Azure AI Foundry Serverless (OpenAI Compatible)
+  - model_name: "heavy/*"
+    litellm_params:
+      model: "openai/*" # Use OpenAI wrapper for Azure Serverless endpoints
+      api_base: "os.environ/AZURE_HEAVY_BASE"
+      api_key: "os.environ/AZURE_FOUNDRY_KEY"
+    router_options:
+      fallbacks: ["light/local-fallback"] # 429 Fallback to Ollama
+      num_retries: 2
+      tpm: 100000
+
+  # LIGHT TIER / FALLBACK: Ollama
+  - model_name: "light/local-fallback"
+    litellm_params:
+      model: "ollama/gemma-4-e4b"
+      api_base: "os.environ/OLLAMA_API_BASE"
+    router_options:
+      tpm: 1000000
+
+  # EMBEDDING TIER: Gemini Embedding 2 (Multimodal)
+  - model_name: "gemini-embedding-2-preview"
+    litellm_params:
+      model: "gemini/gemini-embedding-2-preview"
+      api_key: "os.environ/GEMINI_API_KEY"
+
+router_settings:
+  routing_strategy: "usage-based-routing"
+  enable_fallbacks: true

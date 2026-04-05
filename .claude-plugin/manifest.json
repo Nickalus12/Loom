@@ -1,0 +1,26 @@
+{
+  "name": "Loom Swarm",
+  "version": "2.0.0",
+  "description": "Multi-agent swarm orchestrator powered by Graphiti temporal memory.",
+  "tools": [
+    {
+      "name": "orchestrate",
+      "description": "Triggers the 22-agent Loom swarm for a complex task.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "The task for the swarm to execute."
+          }
+        },
+        "required": ["prompt"]
+      },
+      "command": "python",
+      "args": ["-m", "loom.cli", "--command", "orchestrate", "--prompt", "{{prompt}}"],
+      "env": {
+        "PYTHONPATH": "${pluginPath}/src"
+      }
+    }
+  ]
+}
