@@ -1,20 +1,17 @@
 model_list:
-  # HEAVY TIER: Azure AI Foundry Serverless (OpenAI Compatible)
+  # HEAVY TIER: Gemini 2.5 Flash (primary — swap to Azure when endpoint is ready)
   - model_name: "heavy/*"
     litellm_params:
-      model: "openai/*" # Use OpenAI wrapper for Azure Serverless endpoints
-      api_base: "os.environ/AZURE_HEAVY_BASE"
-      api_key: "os.environ/AZURE_FOUNDRY_KEY"
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
     router_options:
-      fallbacks: ["light/local-fallback"] # 429 Fallback to Ollama
-      num_retries: 2
-      tpm: 100000
+      tpm: 1000000
 
-  # LIGHT TIER / FALLBACK: Ollama
-  - model_name: "light/local-fallback"
+  # LIGHT TIER: Gemini 2.5 Flash
+  - model_name: "light/*"
     litellm_params:
-      model: "ollama/gemma-4-e4b"
-      api_base: "os.environ/OLLAMA_API_BASE"
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
     router_options:
       tpm: 1000000
 
@@ -23,6 +20,15 @@ model_list:
     litellm_params:
       model: "gemini/gemini-embedding-2-preview"
       api_key: "os.environ/GEMINI_API_KEY"
+
+  # LOCAL TIER (on-device Gemma 4 E2B via Ollama)
+  - model_name: "local/*"
+    litellm_params:
+      model: "ollama/gemma4-e2b"
+      api_base: "http://localhost:11434"
+
+litellm_settings:
+  drop_params: true
 
 router_settings:
   routing_strategy: "usage-based-routing"
