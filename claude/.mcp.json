@@ -19,6 +19,10 @@
       "env": {
         "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/../src"
       }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
     }
   }
 }

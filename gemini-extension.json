@@ -90,6 +90,17 @@
       "name": "Agent Analysis Model",
       "description": "Ollama model for agent analysis turns (default: deepseek-coder-v2:16b).",
       "envVar": "LOOM_AGENT_ANALYSIS_MODEL"
+    },
+    {
+      "name": "Nia API Key",
+      "description": "API key for Nia AI codebase grounding. Get one at app.trynia.ai",
+      "envVar": "NIA_API_KEY",
+      "sensitive": true
+    },
+    {
+      "name": "Nia Grounding",
+      "description": "Enable Nia-powered codebase grounding (default: true if NIA_API_KEY is set).",
+      "envVar": "NIA_ENABLED"
     }
   ],
   "mcpServers": {
@@ -112,6 +123,10 @@
       "env": {
         "PYTHONPATH": "${extensionPath}/src"
       }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
     }
   }
 }

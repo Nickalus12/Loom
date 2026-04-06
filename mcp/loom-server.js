@@ -37738,6 +37738,181 @@ var require_get_skill_content = __commonJS({
   }
 });
 
+// plugins/loom/src/mcp/handlers/nia-client.js
+var require_nia_client = __commonJS({
+  "plugins/loom/src/mcp/handlers/nia-client.js"(exports2, module2) {
+    "use strict";
+    var https2 = require("https");
+    var { URL: URL2 } = require("url");
+    var { resolveSetting: resolveSetting2 } = require_setting_resolver();
+    var { log: log2 } = require_logger();
+    var NIA_BASE_URL2 = "https://apigcp.trynia.ai";
+    var NIA_TIMEOUT_MS2 = 15e3;
+    function getNiaApiKey2() {
+      var key = resolveSetting2("NIA_API_KEY");
+      if (!key) return null;
+      var enabled = resolveSetting2("NIA_ENABLED");
+      if (enabled === "false") return null;
+      return key;
+    }
+    function niaRequest2(method, path2, body) {
+      return new Promise(function(resolve, reject) {
+        var apiKey = getNiaApiKey2();
+        if (!apiKey) {
+          return reject(new Error("NIA_API_KEY not set"));
+        }
+        var url = new URL2(path2, NIA_BASE_URL2);
+        var payload = body ? JSON.stringify(body) : null;
+        var options = {
+          hostname: url.hostname,
+          port: 443,
+          path: url.pathname + url.search,
+          method: method,
+          headers: {
+            "Authorization": "Bearer " + apiKey,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          timeout: NIA_TIMEOUT_MS2
+        };
+        if (payload) {
+          options.headers["Content-Length"] = Buffer.byteLength(payload);
+        }
+        var req = https2.request(options, function(res) {
+          var chunks = [];
+          res.on("data", function(chunk) { chunks.push(chunk); });
+          res.on("end", function() {
+            var raw = Buffer.concat(chunks).toString("utf8");
+            var parsed;
+            try {
+              parsed = JSON.parse(raw);
+            } catch (_) {
+              parsed = { raw_response: raw };
+            }
+            if (res.statusCode === 401 || res.statusCode === 403) {
+              return reject(new Error("Nia authentication failed (HTTP " + res.statusCode + ")"));
+            }
+            if (res.statusCode === 404) {
+              return reject(new Error("Nia resource not found (HTTP 404)"));
+            }
+            if (res.statusCode === 429) {
+              return reject(new Error("Nia rate limit exceeded (HTTP 429)"));
+            }
+            if (res.statusCode >= 400) {
+              return reject(new Error("Nia API error (HTTP " + res.statusCode + "): " + (parsed.message || raw)));
+            }
+            resolve(parsed);
+          });
+        });
+        req.on("timeout", function() {
+          req.destroy();
+          reject(new Error("Nia connection failed: request timed out"));
+        });
+        req.on("error", function(err) {
+          reject(new Error("Nia connection failed: " + err.message));
+        });
+        if (payload) {
+          req.write(payload);
+        }
+        req.end();
+      });
+    }
+    function handleNiaListSources2(params) {
+      var apiKey = getNiaApiKey2();
+      if (!apiKey) {
+        return Promise.resolve({ available: false, reason: "NIA_API_KEY not set. Get a key at app.trynia.ai" });
+      }
+      var limit = params.limit || 20;
+      var offset = params.offset || 0;
+      return niaRequest2("GET", "/v2/sources?limit=" + limit + "&offset=" + offset).then(function(data) {
+        return {
+          available: true,
+          sources: (data.items || []).map(function(item) {
+            return {
+              id: item.id,
+              type: item.type,
+              identifier: item.identifier,
+              display_name: item.display_name,
+              status: item.status,
+              trust_level: (item.curation && item.curation.trust_signals && item.curation.trust_signals.trust_level) || "unknown"
+            };
+          }),
+          total: (data.pagination && data.pagination.total) || 0
+        };
+      }).catch(function(err) {
+        log2("error", "nia_list_sources failed: " + err.message);
+        return { available: true, error: err.message };
+      });
+    }
+    function handleNiaCheckRepoStatus2(params) {
+      var apiKey = getNiaApiKey2();
+      if (!apiKey) {
+        return Promise.resolve({ available: false, reason: "NIA_API_KEY not set" });
+      }
+      var repo = params.repository;
+      if (!repo || repo.indexOf("/") === -1) {
+        return Promise.resolve({ available: true, error: "repository must be in owner/repo format" });
+      }
+      var parts = repo.split("/");
+      var owner = parts[0];
+      var name = parts[1];
+      return niaRequest2("GET", "/v2/repositories/" + encodeURIComponent(owner) + "/" + encodeURIComponent(name)).then(function(data) {
+        return {
+          available: true,
+          repository: repo,
+          status: data.status,
+          progress: data.progress || null
+        };
+      }).catch(function(err) {
+        log2("error", "nia_check_repo_status failed: " + err.message);
+        return { available: true, error: err.message };
+      });
+    }
+    function handleNiaSearch2(params) {
+      var apiKey = getNiaApiKey2();
+      if (!apiKey) {
+        return Promise.resolve({ available: false, reason: "NIA_API_KEY not set" });
+      }
+      var body = {
+        query: params.query,
+        repositories: params.repositories || []
+      };
+      if (params.limit) {
+        body.limit = params.limit;
+      }
+      return niaRequest2("POST", "/v2/universal-search", body).then(function(data) {
+        return { available: true, results: data };
+      }).catch(function(err) {
+        log2("error", "nia_search failed: " + err.message);
+        return { available: true, error: err.message };
+      });
+    }
+    function handleNiaPackageSearch2(params) {
+      var apiKey = getNiaApiKey2();
+      if (!apiKey) {
+        return Promise.resolve({ available: false, reason: "NIA_API_KEY not set" });
+      }
+      var body = {
+        registry: params.registry,
+        package_name: params.package_name,
+        semantic_queries: params.queries || []
+      };
+      return niaRequest2("POST", "/v2/package-search/hybrid", body).then(function(data) {
+        return { available: true, results: data };
+      }).catch(function(err) {
+        log2("error", "nia_package_search failed: " + err.message);
+        return { available: true, error: err.message };
+      });
+    }
+    module2.exports = {
+      handleNiaListSources: handleNiaListSources2,
+      handleNiaCheckRepoStatus: handleNiaCheckRepoStatus2,
+      handleNiaSearch: handleNiaSearch2,
+      handleNiaPackageSearch: handleNiaPackageSearch2
+    };
+  }
+});
+
 // plugins/loom/src/mcp/loom-server.js
 var { Server } = require_server2();
 var { StdioServerTransport } = require_stdio2();
@@ -37769,6 +37944,18 @@ function getRecoveryHint(toolName, errorMessage) {
   }
   if (toolName === "initialize_workspace" && /permission|EACCES|EPERM/i.test(errorMessage)) {
     return "Check that the target directory is writable.";
+  }
+  if (toolName.startsWith("nia_") && /auth|401|403/i.test(errorMessage)) {
+    return "Set NIA_API_KEY in your .env file. Get a key at app.trynia.ai";
+  }
+  if (toolName.startsWith("nia_") && /429|rate.limit/i.test(errorMessage)) {
+    return "Nia rate limit hit. Wait and retry, or upgrade your Nia plan.";
+  }
+  if (toolName === "nia_check_repo_status" && /404|not.found/i.test(errorMessage)) {
+    return "Repository not indexed in Nia. Index it first at app.trynia.ai";
+  }
+  if (toolName.startsWith("nia_") && /NIA_API_KEY not set/i.test(errorMessage)) {
+    return "Nia grounding is disabled. Set NIA_API_KEY to enable codebase grounding.";
   }
   return null;
 }
@@ -37951,6 +38138,528 @@ registerTool({
     required: ["resources"]
   }
 }, handleGetSkillContent);
+var { handleNiaListSources, handleNiaCheckRepoStatus, handleNiaSearch, handleNiaPackageSearch } = require_nia_client();
+registerTool({
+  name: "nia_list_sources",
+  description: "List all indexed sources (repos, docs) available for Nia-powered codebase grounding.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      limit: { type: "number", description: "Max results (default: 20)" },
+      offset: { type: "number", description: "Pagination offset (default: 0)" }
+    }
+  }
+}, handleNiaListSources);
+registerTool({
+  name: "nia_check_repo_status",
+  description: "Check the indexing status of a repository in Nia.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      repository: { type: "string", description: "Repository in owner/repo format" }
+    },
+    required: ["repository"]
+  }
+}, handleNiaCheckRepoStatus);
+registerTool({
+  name: "nia_search",
+  description: "Semantic search across indexed codebases and documentation via Nia. The primary grounding tool for agent synthesis.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Natural language search query" },
+      repositories: { type: "array", items: { type: "string" }, description: "Optional repo filter (owner/repo format)" },
+      limit: { type: "number", description: "Max results (default: 10)" }
+    },
+    required: ["query"]
+  }
+}, handleNiaSearch);
+registerTool({
+  name: "nia_package_search",
+  description: "Search package/library documentation via Nia for grounding agent prompts.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      registry: { type: "string", enum: ["npm", "pypi"], description: "Package registry" },
+      package_name: { type: "string", description: "Package name to search docs for" },
+      queries: { type: "array", items: { type: "string" }, description: "Semantic search queries" }
+    },
+    required: ["registry", "package_name", "queries"]
+  }
+}, handleNiaPackageSearch);
+var require_get_trait_index = __commonJS({
+  "plugins/loom/src/mcp/handlers/get-trait-index.js"(exports2, module2) {
+    "use strict";
+    var fs2 = require("fs");
+    var path2 = require("path");
+    var yaml2 = require_js_yaml();
+    var { log: log2 } = require_logger();
+    var _cache2 = null;
+    var _cacheTime2 = 0;
+    var CACHE_TTL_MS2 = 5 * 60 * 1e3;
+    function resolveTraitsDir2() {
+      var extensionRoot = process.env.LOOM_EXTENSION_PATH || process.env.CLAUDE_PLUGIN_ROOT;
+      if (extensionRoot) return path2.join(extensionRoot, "traits");
+      var serverFile = process.argv[1];
+      if (serverFile) return path2.join(path2.dirname(serverFile), "..", "traits");
+      return path2.join(process.cwd(), "traits");
+    }
+    function parseFrontmatter2(content) {
+      var match = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!match) return null;
+      try {
+        return yaml2.load(match[1]);
+      } catch (e) {
+        return null;
+      }
+    }
+    function scanTraits2(traitsDir) {
+      var results = [];
+      var categories = ["archetypes", "capabilities", "constraints", "output-contracts"];
+      for (var i = 0; i < categories.length; i++) {
+        var category = categories[i];
+        var dir = path2.join(traitsDir, category);
+        if (!fs2.existsSync(dir)) continue;
+        var files = fs2.readdirSync(dir).filter(function(f) { return f.endsWith(".trait.md") || f.endsWith(".archetype.md"); });
+        for (var j = 0; j < files.length; j++) {
+          var file = files[j];
+          var content = fs2.readFileSync(path2.join(dir, file), "utf8");
+          var meta = parseFrontmatter2(content);
+          if (!meta) continue;
+          var isArchetype = file.endsWith(".archetype.md");
+          var entry = {
+            name: meta.name,
+            category: isArchetype ? "archetype" : (meta.category || category),
+            description: meta.description || "",
+            archetypes: meta.archetypes || [],
+            compatible_with: meta.compatible_with || [],
+            conflicts_with: meta.conflicts_with || [],
+            requires: meta.requires || [],
+            requires_tools: meta.requires_tools || meta.allowed_tools || [],
+            forbids_tools: meta.forbids_tools || meta.forbidden_tools || [],
+            grounding_categories: meta.grounding_categories || [],
+            grounding_priority: meta.grounding_priority || "low"
+          };
+          if (isArchetype) {
+            entry.allowed_tools = meta.allowed_tools || [];
+            entry.forbidden_tools = meta.forbidden_tools || [];
+            entry.temperature_range = meta.temperature_range || [0.1, 0.5];
+            entry.default_temperature = meta.default_temperature || 0.3;
+            entry.max_turns_range = meta.max_turns_range || [5, 25];
+            entry.default_max_turns = meta.default_max_turns || 15;
+          }
+          results.push(entry);
+        }
+      }
+      return results;
+    }
+    function handleGetTraitIndex2(params) {
+      var now = Date.now();
+      if (!_cache2 || (now - _cacheTime2) > CACHE_TTL_MS2) {
+        var traitsDir = resolveTraitsDir2();
+        _cache2 = scanTraits2(traitsDir);
+        _cacheTime2 = now;
+        log2("INFO", "Trait index rebuilt: " + _cache2.length + " entries");
+      }
+      var results = _cache2;
+      if (params.category && params.category !== "all") {
+        results = results.filter(function(t) { return t.category === params.category; });
+      }
+      if (params.archetype) {
+        results = results.filter(function(t) {
+          return t.category === "archetype" || (t.archetypes && t.archetypes.includes(params.archetype));
+        });
+      }
+      return { traits: results, total: results.length };
+    }
+    module2.exports = { handleGetTraitIndex: handleGetTraitIndex2, scanTraits: scanTraits2, parseFrontmatter: parseFrontmatter2 };
+  }
+});
+var { handleGetTraitIndex } = require_get_trait_index();
+registerTool({
+  name: "get_trait_index",
+  description: "Returns the catalog of available traits and archetypes for agent synthesis. Use this to discover capabilities before calling synthesize_agent.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      category: {
+        type: "string",
+        enum: ["capability", "constraint", "output-contract", "archetype", "all"],
+        description: "Filter by trait category. Default: all"
+      },
+      archetype: {
+        type: "string",
+        enum: ["builder", "analyst", "architect", "investigator"],
+        description: "Filter traits compatible with a specific archetype"
+      }
+    }
+  }
+}, handleGetTraitIndex);
+var require_synthesize_agent = __commonJS({
+  "plugins/loom/src/mcp/handlers/synthesize-agent.js"(exports2, module2) {
+    "use strict";
+    var fs2 = require("fs");
+    var path2 = require("path");
+    var { log: log2 } = require_logger();
+    var { parseFrontmatter: parseFrontmatter2 } = require_get_trait_index();
+    var MAX_PROMPT_CHARS2 = 32e3;
+    function resolveTraitsDir2() {
+      var extensionRoot = process.env.LOOM_EXTENSION_PATH || process.env.CLAUDE_PLUGIN_ROOT;
+      if (extensionRoot) return path2.join(extensionRoot, "traits");
+      var serverFile = process.argv[1];
+      if (serverFile) return path2.join(path2.dirname(serverFile), "..", "traits");
+      return path2.join(process.cwd(), "traits");
+    }
+    function loadFile2(filePath) {
+      var content = fs2.readFileSync(filePath, "utf8");
+      var meta = parseFrontmatter2(content);
+      var bodyMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
+      var body = bodyMatch ? bodyMatch[1].trim() : "";
+      return { meta: meta, body: body };
+    }
+    function loadArchetype2(traitsDir, archetypeName) {
+      var filePath = path2.join(traitsDir, "archetypes", archetypeName + ".archetype.md");
+      if (!fs2.existsSync(filePath)) return null;
+      return loadFile2(filePath);
+    }
+    function loadTrait2(traitsDir, traitName) {
+      var subdirs = ["capabilities", "constraints", "output-contracts"];
+      for (var i = 0; i < subdirs.length; i++) {
+        var filePath = path2.join(traitsDir, subdirs[i], traitName + ".trait.md");
+        if (fs2.existsSync(filePath)) return loadFile2(filePath);
+      }
+      return null;
+    }
+    function validateInputs2(traitsDir, params) {
+      var errors = [];
+      var warnings = [];
+      var archetype = loadArchetype2(traitsDir, params.archetype);
+      if (!archetype) {
+        return { archetype: null, loadedTraits: [], allTraitNames: new Set(), errors: ["Archetype not found: " + params.archetype], warnings: warnings };
+      }
+      var loadedTraits = [];
+      var allTraitNames = new Set(params.traits || []);
+      var traits = params.traits || [];
+      for (var i = 0; i < traits.length; i++) {
+        var traitName = traits[i];
+        var trait = loadTrait2(traitsDir, traitName);
+        if (!trait) {
+          errors.push("Trait not found: " + traitName);
+          continue;
+        }
+        if (trait.meta && trait.meta.archetypes && !trait.meta.archetypes.includes(params.archetype)) {
+          warnings.push('Trait "' + traitName + '" is not designed for archetype "' + params.archetype + '" (compatible with: ' + (trait.meta.archetypes || []).join(", ") + ")");
+        }
+        loadedTraits.push({ name: traitName, meta: trait.meta, body: trait.body });
+      }
+      return { archetype: archetype, loadedTraits: loadedTraits, allTraitNames: allTraitNames, errors: errors, warnings: warnings };
+    }
+    function checkConflicts2(loadedTraits, allTraitNames) {
+      var errors = [];
+      for (var i = 0; i < loadedTraits.length; i++) {
+        var conflicts = (loadedTraits[i].meta && loadedTraits[i].meta.conflicts_with) || [];
+        for (var j = 0; j < conflicts.length; j++) {
+          if (allTraitNames.has(conflicts[j])) {
+            errors.push('Conflict: "' + loadedTraits[i].name + '" conflicts with "' + conflicts[j] + '"');
+          }
+        }
+      }
+      return errors;
+    }
+    function autoAddRequiredTraits2(traitsDir, loadedTraits, allTraitNames) {
+      var autoAdded = [];
+      var warnings = [];
+      var snapshot = loadedTraits.slice();
+      for (var i = 0; i < snapshot.length; i++) {
+        var requires = (snapshot[i].meta && snapshot[i].meta.requires) || [];
+        for (var j = 0; j < requires.length; j++) {
+          var reqName = requires[j];
+          if (!allTraitNames.has(reqName)) {
+            var reqTrait = loadTrait2(traitsDir, reqName);
+            if (reqTrait) {
+              loadedTraits.push({ name: reqName, meta: reqTrait.meta, body: reqTrait.body });
+              allTraitNames.add(reqName);
+              autoAdded.push(reqName);
+            } else {
+              warnings.push('Required trait "' + reqName + '" (needed by "' + snapshot[i].name + '") not found');
+            }
+          }
+        }
+      }
+      return { autoAdded: autoAdded, warnings: warnings };
+    }
+    function resolveTools2(archetype, loadedTraits, archetypeName) {
+      var errors = [];
+      var archetypeAllowed = new Set(archetype.meta.allowed_tools || []);
+      var archetypeForbidden = new Set(archetype.meta.forbidden_tools || []);
+      var traitRequired = new Set();
+      var traitForbidden = new Set();
+      for (var i = 0; i < loadedTraits.length; i++) {
+        var reqTools = (loadedTraits[i].meta && loadedTraits[i].meta.requires_tools) || [];
+        for (var j = 0; j < reqTools.length; j++) traitRequired.add(reqTools[j]);
+        var forbTools = (loadedTraits[i].meta && loadedTraits[i].meta.forbids_tools) || [];
+        for (var k = 0; k < forbTools.length; k++) traitForbidden.add(forbTools[k]);
+      }
+      traitRequired.forEach(function(tool) {
+        if (archetypeForbidden.has(tool)) {
+          errors.push('Tool conflict: trait requires "' + tool + '" but archetype "' + archetypeName + '" forbids it');
+        }
+      });
+      if (errors.length > 0) return { resolvedTools: [], errors: errors };
+      var resolvedTools = [];
+      archetypeAllowed.forEach(function(tool) {
+        if (!traitForbidden.has(tool)) resolvedTools.push(tool);
+      });
+      traitRequired.forEach(function(tool) {
+        if (!traitForbidden.has(tool) && !archetypeAllowed.has(tool)) {
+          resolvedTools.push(tool);
+        }
+      });
+      return { resolvedTools: resolvedTools, errors: [] };
+    }
+    function resolveBehavioralParams2(archetype, loadedTraits, params) {
+      var temps = loadedTraits.filter(function(t) { return t.meta && t.meta.temperature; }).map(function(t) { return t.meta.temperature; });
+      var temperature = params.temperature_override || (temps.length > 0 ? temps.reduce(function(a, b) { return a + b; }, 0) / temps.length : archetype.meta.default_temperature);
+      var tRange = archetype.meta.temperature_range || [0.1, 0.5];
+      temperature = Math.max(tRange[0], Math.min(tRange[1], temperature));
+      var turns = loadedTraits.filter(function(t) { return t.meta && t.meta.max_turns; }).map(function(t) { return t.meta.max_turns; });
+      var maxTurns = params.max_turns_override || (turns.length > 0 ? Math.max.apply(null, turns) : archetype.meta.default_max_turns);
+      var mRange = archetype.meta.max_turns_range || [5, 30];
+      maxTurns = Math.max(mRange[0], Math.min(mRange[1], maxTurns));
+      var timeouts = loadedTraits.filter(function(t) { return t.meta && t.meta.timeout_mins && t.meta.timeout_mins > 0; }).map(function(t) { return t.meta.timeout_mins; });
+      var timeoutMins = timeouts.length > 0 ? Math.max.apply(null, timeouts) : (archetype.meta.timeout_mins || 10);
+      return { temperature: Math.round(temperature * 100) / 100, maxTurns: maxTurns, timeoutMins: timeoutMins };
+    }
+    function buildGroundingContext2(params) {
+      var groundingContext = "";
+      var groundingApplied = [];
+      if (params.detected_libraries && params.detected_libraries.length > 0) {
+        groundingContext = "\n## Detected Libraries\nThe following libraries are in use: " + params.detected_libraries.join(", ") + ". Consult their documentation for API details.\n";
+        groundingApplied = params.detected_libraries;
+      }
+      if (params.grounding_queries && params.grounding_queries.length > 0) {
+        groundingContext += "\n## Grounding Queries\nRelevant context queries: " + params.grounding_queries.join("; ") + "\n";
+      }
+      return { groundingContext: groundingContext, groundingApplied: groundingApplied };
+    }
+    function assemblePrompt2(params, loadedTraits, autoAdded, resolvedTools, groundingContext) {
+      var parts = [];
+      var traitNames = params.traits || [];
+      var agentName = "synth-" + params.archetype + "-" + traitNames.slice(0, 3).join("-").substring(0, 40);
+      parts.push("# Synthesized Agent: " + agentName);
+      parts.push("Archetype: " + params.archetype);
+      parts.push("Traits: " + traitNames.join(", "));
+      if (autoAdded.length > 0) {
+        parts.push("Auto-loaded traits: " + autoAdded.join(", "));
+      }
+      parts.push("");
+      parts.push("## Available Tools");
+      parts.push("You have access to ONLY these tools: " + resolvedTools.join(", "));
+      parts.push("Do NOT attempt to use any other tools.");
+      parts.push("");
+      if (params.archetype === "builder") {
+        parts.push("## File Writing Rules");
+        parts.push("- Use write_file for new files. Use replace for modifications.");
+        parts.push("- NEVER use run_shell_command with output redirection for file content.");
+        parts.push("- Read the target file BEFORE modifying to understand existing patterns.");
+        parts.push("");
+      }
+      for (var i = 0; i < loadedTraits.length; i++) {
+        if (loadedTraits[i].body) {
+          parts.push("# " + (loadedTraits[i].meta.name || loadedTraits[i].name) + " Methodology");
+          parts.push(loadedTraits[i].body);
+          parts.push("");
+        }
+      }
+      if (groundingContext) {
+        parts.push(groundingContext);
+      }
+      if (params.task_context) {
+        parts.push("## Task");
+        parts.push(params.task_context);
+        parts.push("");
+      }
+      var prompt = parts.join("\n");
+      if (prompt.length > MAX_PROMPT_CHARS2) {
+        return { agentName: agentName, prompt: prompt.substring(0, MAX_PROMPT_CHARS2) + "\n\n[Prompt truncated to fit token budget]" };
+      }
+      return { agentName: agentName, prompt: prompt };
+    }
+    function handleSynthesizeAgent2(params) {
+      var traitsDir = resolveTraitsDir2();
+      var result = validateInputs2(traitsDir, params);
+      if (result.errors.length > 0) {
+        return { success: false, errors: result.errors, warnings: result.warnings };
+      }
+      var conflictErrors = checkConflicts2(result.loadedTraits, result.allTraitNames);
+      if (conflictErrors.length > 0) {
+        return { success: false, errors: conflictErrors, warnings: result.warnings };
+      }
+      var autoResult = autoAddRequiredTraits2(traitsDir, result.loadedTraits, result.allTraitNames);
+      result.warnings = result.warnings.concat(autoResult.warnings);
+      var toolResult = resolveTools2(result.archetype, result.loadedTraits, params.archetype);
+      if (toolResult.errors.length > 0) {
+        return { success: false, errors: toolResult.errors, warnings: result.warnings };
+      }
+      var behavioral = resolveBehavioralParams2(result.archetype, result.loadedTraits, params);
+      var grounding = buildGroundingContext2(params);
+      var assembled = assemblePrompt2(params, result.loadedTraits, autoResult.autoAdded, toolResult.resolvedTools, grounding.groundingContext);
+      log2("INFO", "Synthesized agent: " + assembled.agentName + " (" + result.loadedTraits.length + " traits, " + toolResult.resolvedTools.length + " tools)");
+      return {
+        success: true,
+        agent_spec: {
+          name: assembled.agentName,
+          archetype: params.archetype,
+          traits: params.traits || [],
+          auto_added_traits: autoResult.autoAdded,
+          tools: toolResult.resolvedTools,
+          temperature: behavioral.temperature,
+          max_turns: behavioral.maxTurns,
+          timeout_mins: behavioral.timeoutMins,
+          prompt: assembled.prompt,
+          grounding_applied: grounding.groundingApplied
+        },
+        warnings: result.warnings
+      };
+    }
+    module2.exports = { handleSynthesizeAgent: handleSynthesizeAgent2 };
+  }
+});
+var require_validate_trait_composition = __commonJS({
+  "plugins/loom/src/mcp/handlers/validate-trait-composition.js"(exports2, module2) {
+    "use strict";
+    var fs2 = require("fs");
+    var path2 = require("path");
+    var { parseFrontmatter: parseFrontmatter2 } = require_get_trait_index();
+    var { log: log2 } = require_logger();
+    function resolveTraitsDir2() {
+      var extensionRoot = process.env.LOOM_EXTENSION_PATH || process.env.CLAUDE_PLUGIN_ROOT;
+      if (extensionRoot) return path2.join(extensionRoot, "traits");
+      var serverFile = process.argv[1];
+      if (serverFile) return path2.join(path2.dirname(serverFile), "..", "traits");
+      return path2.join(process.cwd(), "traits");
+    }
+    function loadMeta2(traitsDir, name, type) {
+      var subdirs = type === "archetype" ? ["archetypes"] : ["capabilities", "constraints", "output-contracts"];
+      var ext = type === "archetype" ? ".archetype.md" : ".trait.md";
+      for (var i = 0; i < subdirs.length; i++) {
+        var fp = path2.join(traitsDir, subdirs[i], name + ext);
+        if (fs2.existsSync(fp)) {
+          var content = fs2.readFileSync(fp, "utf8");
+          return parseFrontmatter2(content);
+        }
+      }
+      return null;
+    }
+    function handleValidateTraitComposition2(params) {
+      var traitsDir = resolveTraitsDir2();
+      var errors = [];
+      var warnings = [];
+      var autoAddedTraits = [];
+      var archetypeMeta = loadMeta2(traitsDir, params.archetype, "archetype");
+      if (!archetypeMeta) {
+        return { valid: false, errors: ["Archetype not found: " + params.archetype], warnings: [], auto_added_traits: [], resolved_tools: [] };
+      }
+      var allTraitNames = new Set(params.traits || []);
+      var traitMetas = [];
+      var traits = params.traits || [];
+      for (var i = 0; i < traits.length; i++) {
+        var meta = loadMeta2(traitsDir, traits[i], "trait");
+        if (!meta) {
+          errors.push("Trait not found: " + traits[i]);
+          continue;
+        }
+        if (meta.archetypes && !meta.archetypes.includes(params.archetype)) {
+          warnings.push('Trait "' + traits[i] + '" not designed for archetype "' + params.archetype + '"');
+        }
+        traitMetas.push({ name: traits[i], meta: meta });
+      }
+      for (var j = 0; j < traitMetas.length; j++) {
+        var conflicts = (traitMetas[j].meta && traitMetas[j].meta.conflicts_with) || [];
+        for (var k = 0; k < conflicts.length; k++) {
+          if (allTraitNames.has(conflicts[k])) {
+            errors.push('Conflict: "' + traitMetas[j].name + '" conflicts with "' + conflicts[k] + '"');
+          }
+        }
+      }
+      var snapshot = traitMetas.slice();
+      for (var m = 0; m < snapshot.length; m++) {
+        var requires = (snapshot[m].meta && snapshot[m].meta.requires) || [];
+        for (var n = 0; n < requires.length; n++) {
+          var req = requires[n];
+          if (!allTraitNames.has(req)) {
+            var reqMeta = loadMeta2(traitsDir, req, "trait");
+            if (reqMeta) {
+              allTraitNames.add(req);
+              autoAddedTraits.push(req);
+              traitMetas.push({ name: req, meta: reqMeta });
+            } else {
+              warnings.push('Required trait "' + req + '" not found');
+            }
+          }
+        }
+      }
+      var archetypeAllowed = new Set(archetypeMeta.allowed_tools || []);
+      var archetypeForbidden = new Set(archetypeMeta.forbidden_tools || []);
+      var resolvedTools = new Set(archetypeAllowed);
+      for (var p = 0; p < traitMetas.length; p++) {
+        var traitMeta = traitMetas[p].meta;
+        var reqTools = (traitMeta && traitMeta.requires_tools) || [];
+        for (var q = 0; q < reqTools.length; q++) {
+          if (archetypeForbidden.has(reqTools[q])) {
+            errors.push('Tool conflict: trait requires "' + reqTools[q] + '" but archetype forbids it');
+          } else {
+            resolvedTools.add(reqTools[q]);
+          }
+        }
+        var forbTools = (traitMeta && traitMeta.forbids_tools) || [];
+        for (var r = 0; r < forbTools.length; r++) {
+          resolvedTools.delete(forbTools[r]);
+        }
+      }
+      log2("INFO", "Validated trait composition: archetype=" + params.archetype + ", traits=" + (params.traits || []).join(",") + ", valid=" + (errors.length === 0));
+      return {
+        valid: errors.length === 0,
+        errors: errors,
+        warnings: warnings,
+        auto_added_traits: autoAddedTraits,
+        resolved_tools: Array.from(resolvedTools)
+      };
+    }
+    module2.exports = { handleValidateTraitComposition: handleValidateTraitComposition2 };
+  }
+});
+var { handleSynthesizeAgent } = require_synthesize_agent();
+registerTool({
+  name: "synthesize_agent",
+  description: "Compile traits and an archetype into a bespoke agent specification with resolved tools, behavioral parameters, and assembled prompt. Use get_trait_index first to discover available traits.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      archetype: { type: "string", enum: ["builder", "analyst", "architect", "investigator"], description: "Base archetype for tool permissions and behavioral boundaries" },
+      traits: { type: "array", items: { type: "string" }, description: "Array of trait names to compose (e.g., ['code-writing', 'security-analysis'])" },
+      task_context: { type: "string", description: "Brief description of the task this agent will perform" },
+      temperature_override: { type: "number", description: "Override default temperature" },
+      max_turns_override: { type: "number", description: "Override default max turns" },
+      grounding_queries: { type: "array", items: { type: "string" }, description: "Additional queries for Nia/Context7 grounding" },
+      detected_libraries: { type: "array", items: { type: "string" }, description: "Libraries/frameworks detected in the project" }
+    },
+    required: ["archetype", "traits"]
+  }
+}, handleSynthesizeAgent);
+var { handleValidateTraitComposition } = require_validate_trait_composition();
+registerTool({
+  name: "validate_trait_composition",
+  description: "Validate that a set of traits composes correctly with a given archetype without conflicts. Use before synthesize_agent to check feasibility.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      archetype: { type: "string", description: "Archetype name" },
+      traits: { type: "array", items: { type: "string" }, description: "Trait names to validate" }
+    },
+    required: ["archetype", "traits"]
+  }
+}, handleValidateTraitComposition);
 async function main() {
   log("info", "MCP server starting");
   const transport = new StdioServerTransport();
