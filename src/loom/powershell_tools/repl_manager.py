@@ -13,6 +13,7 @@ from loom.powershell_tools.kan_engine import PowerShellKANEngine
 logger = logging.getLogger(__name__)
 
 _DANGEROUS_COMMANDS: frozenset[str] = frozenset({
+    # Hard-blocked: destructive system commands that should never run
     "Remove-Item -Recurse -Force /",
     "Format-Volume",
     "Stop-Computer",
@@ -20,6 +21,33 @@ _DANGEROUS_COMMANDS: frozenset[str] = frozenset({
     "Clear-RecycleBin",
     "rm -rf",
     "del /s /q C:\\",
+})
+
+_ELEVATED_REVIEW_COMMANDS: frozenset[str] = frozenset({
+    # These commands are legitimate but risky — force Gemma LLM review
+    # even when KAN scores them as safe. If Gemma (or Ollama) is unavailable,
+    # the fail-closed handler in _execute_inner blocks them.
+    # Network operations
+    "invoke-webrequest",
+    "invoke-restmethod",
+    "send-mailmessage",
+    "start-bitstransfer",
+    # Process / service manipulation
+    "stop-service",
+    "set-service",
+    "new-service",
+    "start-process",
+    # Firewall / network config
+    "new-netfirewallrule",
+    "remove-netfirewallrule",
+    "disable-netadapter",
+    # Execution bypass
+    "invoke-expression",
+    "set-executionpolicy",
+    # Registry modification
+    "set-itemproperty",
+    "new-itemproperty",
+    "remove-itemproperty",
 })
 
 _PWSH_CANDIDATES: tuple[str, ...] = ("pwsh-preview", "pwsh", "powershell")
@@ -33,18 +61,22 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 # Note: ConstrainedLanguage mode cannot be set programmatically from FullLanguage.
 # Security is enforced via: (1) local Gemma safety review, (2) path allowlist,
 # (3) dangerous command blocklist, and (4) project-root working directory.
-Set-Location '{project_root}'
-Import-Module '{module_path}' -Force -ErrorAction SilentlyContinue
+Set-Location '__LOOM_PROJECT_ROOT__'
+try {
+    Import-Module '__LOOM_MODULE_PATH__' -Force -ErrorAction Stop
+} catch {
+    Write-Warning "Loom module failed to load: $($_.Exception.Message). Loom cmdlets will be unavailable."
+}
 """
 
 _EXEC_WRAPPER_TEMPLATE = """\
-$__loom_marker = '{marker}'
+$__loom_marker = '__LOOM_MARKER__'
 Write-Host $__loom_marker
-try {{
-    {script}
-}} catch {{
+try {
+    __LOOM_SCRIPT__
+} catch {
     Write-Error $_.Exception.Message
-}}
+}
 Write-Host "LOOM_EXIT:$($?):$LASTEXITCODE"
 Write-Host $__loom_marker
 """
@@ -72,6 +104,7 @@ class PowerShellREPLManager:
         self._sessions: dict[str, dict] = {}
         self._custom_tools: dict[str, str] = {}
         self._dangerous_commands = _DANGEROUS_COMMANDS
+        self._elevated_review_commands = _ELEVATED_REVIEW_COMMANDS
         self._allowed_root = str(self._project_root.resolve())
         self._pwsh_path: str | None = None
 
@@ -118,9 +151,10 @@ class PowerShellREPLManager:
             stderr=asyncio.subprocess.PIPE,
         )
 
-        init_script = _SESSION_INIT_TEMPLATE.format(
-            project_root=str(self._project_root).replace("'", "''"),
-            module_path=_MODULE_PATH,
+        init_script = _SESSION_INIT_TEMPLATE.replace(
+            "__LOOM_PROJECT_ROOT__", str(self._project_root).replace("'", "''")
+        ).replace(
+            "__LOOM_MODULE_PATH__", _MODULE_PATH
         )
         init_marker = f"___LOOM_INIT_{uuid.uuid4().hex[:12]}___"
         wrapped_init = f"Write-Host '{init_marker}'\n{init_script}\nWrite-Host '{init_marker}'\n"
@@ -223,7 +257,13 @@ class PowerShellREPLManager:
         structured: bool,
     ) -> dict:
         kan_result = await self._kan.score_risk(script)
-        if kan_result.get("risk_level") == "blocked":
+
+        # Check elevated review BEFORE KAN blocking — elevated commands bypass
+        # the KAN hard-block and route to Gemma for intelligent review instead.
+        elevated_match = self._check_elevated_review(script)
+        requires_gemma = elevated_match is not None
+
+        if kan_result.get("risk_level") == "blocked" and not requires_gemma:
             logger.warning("KAN pre-filter blocked command: %s", kan_result.get("risk_score"))
             return {
                 "success": False,
@@ -236,7 +276,8 @@ class PowerShellREPLManager:
             }
 
         skip_gemma = (
-            kan_result.get("risk_level") == "safe"
+            not requires_gemma
+            and kan_result.get("risk_level") == "safe"
             and kan_result.get("risk_score", 1.0) < 0.2
             and kan_result.get("model") == "kan"
         )
@@ -248,6 +289,9 @@ class PowerShellREPLManager:
                 "error": f"Dangerous command blocked: '{dangerous_match}'",
             }
 
+        if requires_gemma:
+            logger.info("Elevated command '%s' detected — forcing Gemma safety review", elevated_match)
+
         if not self._check_path_safety(script):
             return {
                 "success": False,
@@ -255,6 +299,18 @@ class PowerShellREPLManager:
             }
 
         if not skip_gemma:
+            if self._local_engine is None or not hasattr(self._local_engine, "review_powershell_command"):
+                if requires_gemma:
+                    logger.warning("Elevated command '%s' requires Gemma review but no local engine is available", elevated_match)
+                    return {
+                        "success": False,
+                        "output": "",
+                        "errors": f"Elevated command '{elevated_match}' requires Gemma safety review, but Ollama is unavailable. Start Ollama to enable execution.",
+                        "session_id": session_id,
+                        "execution_time_ms": 0,
+                        "command": script,
+                        "safety": {"risk_level": "blocked", "reason": "Elevated command requires unavailable safety review"},
+                    }
             if self._local_engine is not None and hasattr(self._local_engine, "review_powershell_command"):
                 try:
                     safety_result = await self._local_engine.review_powershell_command(script)
@@ -281,7 +337,7 @@ class PowerShellREPLManager:
         proc = await self._get_or_create_session(session_id)
 
         marker = f"___LOOM_BOUNDARY_{uuid.uuid4().hex[:12]}___"
-        wrapped_script = _EXEC_WRAPPER_TEMPLATE.format(marker=marker, script=script)
+        wrapped_script = _EXEC_WRAPPER_TEMPLATE.replace("__LOOM_MARKER__", marker).replace("__LOOM_SCRIPT__", script)
         wrapped_script += "\n"
 
         try:
@@ -456,5 +512,13 @@ class PowerShellREPLManager:
         for pattern in self._dangerous_commands:
             if pattern.lower() in script_lower:
                 logger.warning("Dangerous command pattern detected: %s", pattern)
+                return pattern
+        return None
+
+    def _check_elevated_review(self, script: str) -> str | None:
+        """Check if the script contains commands that require elevated Gemma review."""
+        script_lower = script.lower()
+        for pattern in self._elevated_review_commands:
+            if pattern in script_lower:
                 return pattern
         return None

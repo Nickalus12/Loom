@@ -1,6 +1,8 @@
 ﻿---
 name: a11y-audit
 description: Run a Loom-style accessibility audit for WCAG compliance, ARIA usage, keyboard navigation, and screen reader compatibility
+argument-hint: "[scope or file paths]"
+allowed-tools: Read, Glob, Grep, Bash(*), Agent
 ---
 
 

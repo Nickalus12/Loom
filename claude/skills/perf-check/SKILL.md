@@ -1,6 +1,8 @@
 ﻿---
 name: perf-check
 description: Run a Loom-style performance assessment for hotspots, regressions, and optimization planning
+argument-hint: "[scope or file paths]"
+allowed-tools: Read, Glob, Grep, Bash(*), Agent
 ---
 
 

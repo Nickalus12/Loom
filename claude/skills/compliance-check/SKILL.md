@@ -1,6 +1,8 @@
 ﻿---
 name: compliance-check
 description: Run a Loom-style regulatory compliance review for GDPR/CCPA, cookie consent, data handling, and licensing
+argument-hint: "[scope or regulation]"
+allowed-tools: Read, Glob, Grep, Agent
 ---
 
 

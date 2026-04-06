@@ -1,35 +1,99 @@
 model_list:
-  # HEAVY TIER: Gemini 2.5 Flash (primary — swap to Azure when endpoint is ready)
-  - model_name: "heavy/*"
+  # ─────────────────────────────────────────────────────────────
+  # HEAVY TIER: Complex reasoning, architecture, coding
+  # Primary: Azure AI Foundry (serverless) → Fallback: Gemini
+  # ─────────────────────────────────────────────────────────────
+  - model_name: "heavy/default"
+    litellm_params:
+      model: "azure/heavy-deployment"
+      api_key: "os.environ/AZURE_FOUNDRY_KEY"
+      api_base: "os.environ/AZURE_HEAVY_BASE"
+    model_info:
+      id: "heavy-azure"
+    tpm: 500000
+    rpm: 100
+
+  - model_name: "heavy/default"
     litellm_params:
       model: "gemini/gemini-2.5-flash"
       api_key: "os.environ/GEMINI_API_KEY"
-    router_options:
-      tpm: 1000000
+    model_info:
+      id: "heavy-gemini-fallback"
+    tpm: 1000000
+    rpm: 500
 
-  # LIGHT TIER: Gemini 2.5 Flash
-  - model_name: "light/*"
+  # ─────────────────────────────────────────────────────────────
+  # LIGHT TIER: Utility, docs, audits — faster, cheaper model
+  # Primary: Gemini Flash → Fallback: Ollama local
+  # ─────────────────────────────────────────────────────────────
+  - model_name: "light/default"
     litellm_params:
       model: "gemini/gemini-2.5-flash"
       api_key: "os.environ/GEMINI_API_KEY"
-    router_options:
-      tpm: 1000000
+    model_info:
+      id: "light-gemini"
+    tpm: 1000000
+    rpm: 500
 
-  # EMBEDDING TIER: Gemini Embedding 2 (Multimodal)
+  - model_name: "light/default"
+    litellm_params:
+      model: "ollama/qwen3:4b"
+      api_base: "http://localhost:11434"
+    model_info:
+      id: "light-ollama-fallback"
+    tpm: 100000
+    rpm: 60
+
+  # ─────────────────────────────────────────────────────────────
+  # LOCAL TIER: On-device inference via Ollama (no cloud calls)
+  # ─────────────────────────────────────────────────────────────
+  - model_name: "local/default"
+    litellm_params:
+      model: "ollama/gemma4-e2b"
+      api_base: "http://localhost:11434"
+    tpm: 100000
+
+  - model_name: "local/analysis"
+    litellm_params:
+      model: "ollama/deepseek-coder-v2:16b"
+      api_base: "http://localhost:11434"
+    tpm: 100000
+
+  - model_name: "local/fast"
+    litellm_params:
+      model: "ollama/qwen3:4b"
+      api_base: "http://localhost:11434"
+    tpm: 100000
+
+  # ─────────────────────────────────────────────────────────────
+  # EMBEDDING TIER: Graphiti knowledge graph embeddings
+  # ─────────────────────────────────────────────────────────────
   - model_name: "gemini-embedding-2-preview"
     litellm_params:
       model: "gemini/gemini-embedding-2-preview"
       api_key: "os.environ/GEMINI_API_KEY"
 
-  # LOCAL TIER (on-device Gemma 4 E2B via Ollama)
-  - model_name: "local/*"
-    litellm_params:
-      model: "ollama/gemma4-e2b"
-      api_base: "http://localhost:11434"
-
+# ─────────────────────────────────────────────────────────────
+# LiteLLM Settings
+# ─────────────────────────────────────────────────────────────
 litellm_settings:
   drop_params: true
+  num_retries: 3
+  request_timeout: 120
+  fallbacks:
+    - {"heavy/default": ["heavy-gemini-fallback"]}
+    - {"light/default": ["light-ollama-fallback"]}
+  allowed_fails: 3
+  cooldown_time: 30
 
+# ─────────────────────────────────────────────────────────────
+# Router Settings
+# ─────────────────────────────────────────────────────────────
 router_settings:
   routing_strategy: "usage-based-routing"
-  enable_fallbacks: true
+  num_retries: 2
+  timeout: 120
+  model_group_alias:
+    "heavy/*": "heavy/default"
+    "light/*": "light/default"
+    "local/*": "local/default"

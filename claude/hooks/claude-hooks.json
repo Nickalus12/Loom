@@ -1,16 +1,5 @@
 {
   "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-end.js",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
@@ -22,26 +11,59 @@
         ]
       }
     ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/session-end.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
+        "matcher": "Agent",
         "hooks": [
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/before-agent.js",
             "timeout": 10
           }
-        ],
-        "matcher": "Agent"
+        ]
       },
       {
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/policy-enforcer.js",
             "timeout": 5
           }
-        ],
-        "matcher": "Bash"
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/file-guard.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/after-agent.js",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

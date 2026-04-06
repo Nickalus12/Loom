@@ -1,6 +1,8 @@
 ﻿---
 name: debug
 description: Run the Loom debugging workflow for investigation-heavy tasks
+argument-hint: "<issue description>"
+allowed-tools: Read, Glob, Grep, Bash(*), Agent
 ---
 
 

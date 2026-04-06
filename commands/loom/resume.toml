@@ -38,7 +38,7 @@ Do NOT call `get_internal_docs` or any repo-grounding/research tool to answer to
 6. Activate the `delegation` skill when delegating to subagents
 7. Activate the `validation` skill to verify phase outputs
 
-If the session state above shows "No active session", inform the user and suggest using `/loom:orchestrate` to start one.
+If the session state above shows "No active session", inform the user and suggest using `/loom:craft` to start one.
 
 ---
 

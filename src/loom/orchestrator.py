@@ -48,31 +48,53 @@ class LoomOrchestrator:
         Dispatches an agent through the LiteLLM proxy using its registry definition.
         The agent's methodology is loaded as the system prompt, and its tier,
         temperature, and timeout are sourced from the registry frontmatter.
+
+        Model resolution order:
+        1. Agent frontmatter `model` field (explicit override)
+        2. `{tier}/default` routing via LiteLLM proxy (with fallback chain)
         """
         config = self.agents.get(agent_name)
-        model_string = f"{config.tier}/default"
+        model_string = config.model if config.model else f"{config.tier}/default"
 
         user_content = task
         if context:
             user_content = f"## Context from Previous Phases\n\n{context}\n\n## Current Task\n\n{task}"
 
-        logger.info("Dispatching %s (tier=%s, temp=%.1f)", agent_name, config.tier, config.temperature)
+        logger.info(
+            "Dispatching %s (tier=%s, model=%s, temp=%.1f)",
+            agent_name, config.tier, model_string, config.temperature,
+        )
 
-        try:
-            response = await self._client.chat.completions.create(
-                model=model_string,
-                messages=[
-                    {"role": "system", "content": config.methodology},
-                    {"role": "user", "content": user_content},
-                ],
-                temperature=config.temperature,
-                timeout=config.timeout_mins * 60,
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            raise RuntimeError(
-                f"Agent '{agent_name}' dispatch failed on {config.tier} tier: {e}"
-            ) from e
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = await self._client.chat.completions.create(
+                    model=model_string,
+                    messages=[
+                        {"role": "system", "content": config.methodology},
+                        {"role": "user", "content": user_content},
+                    ],
+                    temperature=config.temperature,
+                    timeout=config.timeout_mins * 60,
+                )
+                result = response.choices[0].message.content
+                if not result:
+                    raise RuntimeError(f"Agent '{agent_name}' returned empty response")
+                return result
+            except Exception as e:
+                last_error = e
+                if attempt < self.max_retries:
+                    logger.warning(
+                        "Agent '%s' dispatch attempt %d/%d failed: %s",
+                        agent_name, attempt + 1, self.max_retries + 1, e,
+                    )
+                    continue
+                break
+
+        raise RuntimeError(
+            f"Agent '{agent_name}' dispatch failed after {self.max_retries + 1} attempts "
+            f"on {config.tier} tier (model={model_string}): {last_error}"
+        ) from last_error
 
     def _parse_handoff(self, response: str) -> dict:
         """
@@ -290,17 +312,154 @@ class LoomOrchestrator:
         logger.info("Plan execution complete: all %d phases succeeded", len(plan.phases))
         return plan
 
-    async def execute_swarm(self, task: str) -> SwarmPlan:
-        """
-        High-level entry point implementing the Blackboard SOP.
+    def craft_plan(self, task: str) -> SwarmPlan:
+        """Create a task-appropriate phase plan based on keyword analysis.
 
-        Default 5-phase flow:
-          1. OBSERVE  — Architect analyzes the task and project structure
-          2. IDENTIFY — Security + Tester audit in parallel
-          3. EVOLVE   — Coder implements based on all findings
-          4. VALIDATE — Code reviewer checks the output
+        Plan selection:
+        - "review" / "audit" keywords  -> 3-phase review pipeline
+        - "fix" / "bug" keywords       -> 4-phase debug pipeline
+        - "refactor" keyword            -> 4-phase refactor pipeline
+        - default ("build"/"add"/"implement" or anything else) -> 5-phase full pipeline
         """
-        plan = SwarmPlan(
+        task_lower = task.lower()
+
+        if any(kw in task_lower for kw in ("review", "audit")):
+            return self._plan_review(task)
+        if any(kw in task_lower for kw in ("fix", "bug")):
+            return self._plan_debug(task)
+        if "refactor" in task_lower:
+            return self._plan_refactor(task)
+        return self._plan_build(task)
+
+    def _plan_review(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
+            task=task,
+            phases=[
+                Phase(
+                    id=1,
+                    name="Architecture Analysis",
+                    agent="architect",
+                    objective=(
+                        "Analyze the project structure and codebase relevant to the review. "
+                        "Identify key files, dependencies, and areas of concern."
+                    ),
+                ),
+                Phase(
+                    id=2,
+                    name="Code Review",
+                    agent="code_reviewer",
+                    objective=(
+                        "Perform a thorough review of the codebase for correctness, security, performance, "
+                        "and adherence to project conventions. Classify findings as Critical/Major/Minor/Suggestion."
+                    ),
+                    blocked_by=[1],
+                ),
+                Phase(
+                    id=3,
+                    name="Summary",
+                    agent="architect",
+                    objective=(
+                        "Synthesize review findings into an actionable summary with prioritized recommendations."
+                    ),
+                    blocked_by=[2],
+                ),
+            ],
+        )
+
+    def _plan_debug(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
+            task=task,
+            phases=[
+                Phase(
+                    id=1,
+                    name="Bug Analysis",
+                    agent="debugger",
+                    objective=(
+                        "Investigate the reported issue. Reproduce the bug, identify root cause, "
+                        "and propose a fix strategy with affected files."
+                    ),
+                ),
+                Phase(
+                    id=2,
+                    name="Implementation",
+                    agent="coder",
+                    objective=(
+                        "Implement the fix based on the debugger's analysis. "
+                        "Follow established code patterns and conventions."
+                    ),
+                    blocked_by=[1],
+                ),
+                Phase(
+                    id=3,
+                    name="Test Verification",
+                    agent="tester",
+                    objective=(
+                        "Verify the fix resolves the issue. Write regression tests to prevent recurrence. "
+                        "Check for side effects in related code paths."
+                    ),
+                    blocked_by=[2],
+                ),
+                Phase(
+                    id=4,
+                    name="Code Review",
+                    agent="code_reviewer",
+                    objective=(
+                        "Review the fix for correctness, security, and adherence to project conventions. "
+                        "Classify findings as Critical/Major/Minor/Suggestion."
+                    ),
+                    blocked_by=[3],
+                ),
+            ],
+        )
+
+    def _plan_refactor(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
+            task=task,
+            phases=[
+                Phase(
+                    id=1,
+                    name="Architecture Analysis",
+                    agent="architect",
+                    objective=(
+                        "Analyze the current structure and propose a refactoring plan. "
+                        "Identify code smells, coupling issues, and improvement opportunities."
+                    ),
+                ),
+                Phase(
+                    id=2,
+                    name="Refactoring",
+                    agent="refactor",
+                    objective=(
+                        "Execute the refactoring plan. Apply structural improvements while "
+                        "preserving external behavior and maintaining test coverage."
+                    ),
+                    blocked_by=[1],
+                ),
+                Phase(
+                    id=3,
+                    name="Test Verification",
+                    agent="tester",
+                    objective=(
+                        "Verify that all existing tests still pass after refactoring. "
+                        "Add tests for any newly exposed interfaces or edge cases."
+                    ),
+                    blocked_by=[2],
+                ),
+                Phase(
+                    id=4,
+                    name="Code Review",
+                    agent="code_reviewer",
+                    objective=(
+                        "Review refactored code for correctness, clarity, and adherence to conventions. "
+                        "Verify no behavioral regressions were introduced."
+                    ),
+                    blocked_by=[3],
+                ),
+            ],
+        )
+
+    def _plan_build(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
             task=task,
             phases=[
                 Phase(
@@ -359,4 +518,12 @@ class LoomOrchestrator:
             ],
         )
 
+    async def execute_swarm(self, task: str) -> SwarmPlan:
+        """
+        High-level entry point implementing the Blackboard SOP.
+
+        Uses craft_plan() to select the appropriate phase pipeline based on
+        task keywords, then executes it via execute_plan().
+        """
+        plan = self.craft_plan(task)
         return await self.execute_plan(plan)

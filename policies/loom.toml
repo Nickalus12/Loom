@@ -1,4 +1,4 @@
-﻿# Loom extension policy pack.
+# Loom extension policy pack.
 #
 # These rules add low-friction guardrails for autonomous and interactive runs:
 # - deny obviously destructive shell commands
@@ -41,4 +41,17 @@ toolName = "run_shell_command"
 commandRegex = ".*(?:<<).*$"
 decision = "deny"
 priority = 950
-deny_message = "Heredoc corrupts structured content (YAML, Markdown, JSON) â€” use write_file instead"
+deny_message = "Heredoc corrupts structured content (YAML, Markdown, JSON) -- use write_file instead."
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*\\bcurl\\b.*\\|.*\\b(?:sh|bash)\\b.*"
+decision = "deny"
+priority = 950
+deny_message = "Loom blocks piped remote execution (curl | sh). Download and inspect scripts before running."
+
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = ".*\\b(?:npm|pip|pip3)\\s+install\\b.*"
+decision = "ask_user"
+priority = 850

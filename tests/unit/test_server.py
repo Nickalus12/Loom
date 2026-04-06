@@ -32,23 +32,23 @@ def _make_mocks():
     return mock_engine, mock_orch
 
 
-class TestOrchestrateSwarmTool:
-    """Verify the orchestrate_swarm MCP tool function."""
+class TestCraftTool:
+    """Verify the craft MCP tool function."""
 
     @pytest.mark.asyncio
-    async def test_orchestrate_swarm_returns_error_when_not_initialized(self):
-        """Should return an error string when _get_engines raises."""
-        from loom.server import orchestrate_swarm
+    async def test_craft_returns_error_when_not_initialized(self):
+        """Should return an error JSON when _get_engines raises."""
+        from loom.server import craft
 
         with patch("loom.server._get_engines", side_effect=ValueError("LITELLM_MASTER_KEY environment variable is missing")):
-            result = await orchestrate_swarm(task="test")
+            result = await craft(task="test", mode="cloud")
             assert isinstance(result, str)
             assert "failed" in result.lower()
 
     @pytest.mark.asyncio
-    async def test_orchestrate_swarm_success(self):
-        """Should return success string when swarm completes."""
-        from loom.server import orchestrate_swarm
+    async def test_craft_cloud_success(self):
+        """Should return success JSON when swarm completes in cloud mode."""
+        from loom.server import craft
         from loom.orchestrator import SwarmPlan, Phase
 
         mock_engine, mock_orch = _make_mocks()
@@ -57,20 +57,20 @@ class TestOrchestrateSwarmTool:
         ))
 
         with patch("loom.server._get_engines", return_value=(mock_engine, mock_orch)):
-            result = await orchestrate_swarm(task="test task")
+            result = await craft(task="test task", mode="cloud")
             assert isinstance(result, str)
-            assert "completed" in result.lower() or "swarm" in result.lower()
+            assert "success" in result.lower()
 
     @pytest.mark.asyncio
-    async def test_orchestrate_swarm_catches_exception(self):
-        """Should catch exceptions and return error string instead of raising."""
-        from loom.server import orchestrate_swarm
+    async def test_craft_catches_exception(self):
+        """Should catch exceptions and return error JSON instead of raising."""
+        from loom.server import craft
 
         mock_engine, mock_orch = _make_mocks()
         mock_orch.execute_swarm = AsyncMock(side_effect=RuntimeError("boom"))
 
         with patch("loom.server._get_engines", return_value=(mock_engine, mock_orch)):
-            result = await orchestrate_swarm(task="test")
+            result = await craft(task="test", mode="cloud")
             assert isinstance(result, str)
             assert "failed" in result.lower() or "boom" in result
 

@@ -124,9 +124,9 @@ class PowerShellKANEngine:
             float(bool(re.search(r"remove-item|ri\s|del\s|rm\s", lower))),
             float("-recurse" in lower and "-force" in lower),
             float(bool(re.search(r"[a-zA-Z]:\\|/usr|/etc|/home|\$env:", command))),
-            min(sum(1 for c in _NETWORK_CMDLETS if c in lower) / 3.0, 1.0),
+            float(any(c in lower for c in _NETWORK_CMDLETS)),
             float(bool(re.search(r"registry|hklm:|hkcu:|set-itemproperty", lower))),
-            float(bool(re.search(r"start-process|stop-process|get-process.*stop", lower))),
+            float(bool(re.search(r"start-process|stop-process|get-process.*stop|stop-service|set-service|new-service|new-netfirewallrule|disable-netadapter", lower))),
             min(command.count("$") / 10.0, 1.0),
             float('"' in command and "$" in command),
             min(len(re.findall(r"[A-Z][a-z]+-[A-Z][a-z]+", command)) / 5.0, 1.0),
@@ -147,14 +147,14 @@ class PowerShellKANEngine:
                 risk_score = 1.0 / (1.0 + math.exp(-risk_raw))
         else:
             risk_score = (
-                features[3] * 0.3
-                + features[4] * 0.25
-                + features[5] * 0.3
-                + features[7] * 0.15
-                + features[8] * 0.2
-                + features[9] * 0.15
-                + features[15] * 0.1
-                - features[14] * 0.2
+                features[3] * 0.4     # invoke-expression: high risk
+                + features[4] * 0.25  # deletion commands
+                + features[5] * 0.35  # recursive + force
+                + features[7] * 0.45  # network operations: exfiltration risk
+                + features[8] * 0.4   # registry operations: system tampering
+                + features[9] * 0.35  # process operations: execution risk
+                + features[15] * 0.1  # nesting complexity
+                - features[14] * 0.2  # safe indicators reduce score
             )
             risk_score = max(0.0, min(1.0, risk_score))
 

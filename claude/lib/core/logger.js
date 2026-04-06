@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 function log(level, message) {
   process.stderr.write(`[${level}] loom: ${message}\n`);

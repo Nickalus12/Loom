@@ -32,6 +32,7 @@ class AgentConfig:
     max_turns: int
     timeout_mins: int
     tier: str
+    model: str  # Explicit model override (empty = use tier default)
     methodology: str
 
 
@@ -59,13 +60,18 @@ def _parse_agent_file(path: Path) -> AgentConfig | None:
 
     name = meta.get("name", path.stem)
 
-    if name in LOCAL_AGENTS:
-        default_tier = "local"
+    # Tier: frontmatter override > hardcoded sets > default "light"
+    if "tier" in meta:
+        tier = meta["tier"]
+    elif name in LOCAL_AGENTS:
+        tier = "local"
     elif name in HEAVY_AGENTS:
-        default_tier = "heavy"
+        tier = "heavy"
     else:
-        default_tier = "light"
-    tier = default_tier
+        tier = "light"
+
+    # Model: explicit model override from frontmatter (empty = use tier default)
+    model = meta.get("model", "")
 
     return AgentConfig(
         name=name,
@@ -75,6 +81,7 @@ def _parse_agent_file(path: Path) -> AgentConfig | None:
         max_turns=int(meta.get("max_turns", 20)),
         timeout_mins=int(meta.get("timeout_mins", 8)),
         tier=tier,
+        model=model,
         methodology=parts[2].strip(),
     )
 

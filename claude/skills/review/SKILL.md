@@ -1,6 +1,8 @@
 ﻿---
 name: review
 description: Perform a Loom-style code review with findings ordered by severity and concrete file references
+argument-hint: "[file paths or scope]"
+allowed-tools: Read, Glob, Grep, Bash(git:*), Agent
 ---
 
 

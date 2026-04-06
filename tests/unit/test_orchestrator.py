@@ -21,6 +21,7 @@ def _make_agent_config(name="test_agent", tier="heavy", temperature=0.2, timeout
         max_turns=15,
         timeout_mins=timeout_mins,
         tier=tier,
+        model="",
         methodology=f"You are {name}. Do your job.",
     )
 

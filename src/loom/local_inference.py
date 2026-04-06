@@ -261,12 +261,7 @@ class LocalInferenceEngine:
             return self._parse_safety_response(response)
         except Exception as exc:
             logger.error("PowerShell safety review failed: %s", exc)
-            return {
-                "risk_level": "caution",
-                "reason": f"Safety review unavailable: {exc}",
-                "details": "Proceeding with caution due to review failure",
-                "raw_response": "",
-            }
+            raise
 
     def _parse_safety_response(self, response: str) -> dict:
         """Parses the structured safety review response from the local model."""
@@ -351,3 +346,4 @@ class LocalInferenceEngine:
         )
         content = response.choices[0].message.content
         return content or ""
+

@@ -318,3 +318,207 @@ class TestAddFileNodeSecurity:
         safe_file.write_text("x = 1")
         node = await secured_memory.add_file_node(str(safe_file), "Safe file")
         assert node is not None
+
+
+# ===========================================================================
+# Expanded Tests: Local Insight Storage
+# ===========================================================================
+
+
+class TestAddLocalInsight:
+    """Verify add_local_insight stores episodes with correct metadata."""
+
+    @pytest.mark.asyncio
+    async def test_add_local_insight_stores_episode(self, memory, mock_graphiti):
+        """Should call Graphiti.add_episode with correct parameters."""
+        mock_graphiti.add_episode = AsyncMock()
+        await memory.add_local_insight(
+            file_path="src/app.py",
+            analysis="Found a potential null reference on line 42.",
+            confidence="high",
+            category="bug",
+        )
+
+        mock_graphiti.add_episode.assert_awaited_once()
+        call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+        assert call_kwargs["name"] == "LocalInsight:src/app.py"
+        assert "null reference" in call_kwargs["episode_body"]
+        assert call_kwargs["source_description"] == "local_e2b|high|bug"
+
+    @pytest.mark.asyncio
+    async def test_add_local_insight_medium_confidence(self, memory, mock_graphiti):
+        """Should correctly format source_description for medium confidence."""
+        mock_graphiti.add_episode = AsyncMock()
+        await memory.add_local_insight(
+            file_path="src/utils.py",
+            analysis="Style issue found",
+            confidence="medium",
+            category="pattern",
+        )
+
+        call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+        assert call_kwargs["source_description"] == "local_e2b|medium|pattern"
+
+    @pytest.mark.asyncio
+    async def test_add_local_insight_low_confidence_observation(self, memory, mock_graphiti):
+        """Should correctly format source_description for low confidence observation."""
+        mock_graphiti.add_episode = AsyncMock()
+        await memory.add_local_insight(
+            file_path="src/config.py",
+            analysis="Code is well structured",
+            confidence="low",
+            category="observation",
+        )
+
+        call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+        assert call_kwargs["source_description"] == "local_e2b|low|observation"
+
+    @pytest.mark.asyncio
+    async def test_add_local_insight_security_category(self, memory, mock_graphiti):
+        """Should correctly store security category insights."""
+        mock_graphiti.add_episode = AsyncMock()
+        await memory.add_local_insight(
+            file_path="src/auth.py",
+            analysis="SQL injection vulnerability on line 15",
+            confidence="high",
+            category="security",
+        )
+
+        call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+        assert call_kwargs["source_description"] == "local_e2b|high|security"
+        assert "SQL injection" in call_kwargs["episode_body"]
+
+    @pytest.mark.asyncio
+    async def test_add_local_insight_has_reference_time(self, memory, mock_graphiti):
+        """Should include a reference_time in the episode."""
+        mock_graphiti.add_episode = AsyncMock()
+        await memory.add_local_insight(
+            file_path="src/app.py",
+            analysis="Analysis text",
+            confidence="high",
+            category="bug",
+        )
+
+        call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+        assert "reference_time" in call_kwargs
+        assert isinstance(call_kwargs["reference_time"], datetime)
+
+    @pytest.mark.asyncio
+    async def test_add_local_insight_uses_group_id(self, mock_graphiti):
+        """Should use the memory engine's group_id for the episode."""
+        mock_graphiti.add_episode = AsyncMock()
+        mem = LoomSwarmMemory(graphiti=mock_graphiti, group_id="custom-group")
+        await mem.add_local_insight(
+            file_path="test.py",
+            analysis="test",
+            confidence="high",
+            category="bug",
+        )
+
+        call_kwargs = mock_graphiti.add_episode.call_args.kwargs
+        assert call_kwargs["group_id"] == "custom-group"
+
+
+# ===========================================================================
+# Expanded Tests: Context Extraction Detail
+# ===========================================================================
+
+
+class TestContextExtractionDetail:
+    """Verify detailed aspects of get_context_for_coder."""
+
+    @pytest.mark.asyncio
+    async def test_get_context_extracts_local_insights(self, memory, mock_graphiti):
+        """Should extract local insights from episodes with local_e2b source_description."""
+        episode = MagicMock()
+        episode.source_description = "local_e2b|high|bug"
+        episode.content = "Found null reference"
+
+        search_result = MagicMock()
+        search_result.nodes = []
+        search_result.edges = []
+        search_result.episodes = [episode]
+        mock_graphiti.search_ = AsyncMock(return_value=search_result)
+
+        result = await memory.get_context_for_coder("src/app.py")
+
+        assert len(result["local_insights"]) == 1
+        assert result["local_insights"][0]["confidence"] == "high"
+        assert result["local_insights"][0]["category"] == "bug"
+
+    @pytest.mark.asyncio
+    async def test_get_context_ignores_non_local_episodes(self, memory, mock_graphiti):
+        """Should not include episodes without local_e2b prefix in local_insights."""
+        episode = MagicMock()
+        episode.source_description = "cloud_analysis"
+        episode.content = "Cloud review"
+
+        search_result = MagicMock()
+        search_result.nodes = []
+        search_result.edges = []
+        search_result.episodes = [episode]
+        mock_graphiti.search_ = AsyncMock(return_value=search_result)
+
+        result = await memory.get_context_for_coder("src/app.py")
+
+        assert len(result["local_insights"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_context_handles_missing_source_description(self, memory, mock_graphiti):
+        """Should handle episodes with no source_description attribute."""
+        episode = MagicMock(spec=[])
+        episode.source_description = None
+
+        search_result = MagicMock()
+        search_result.nodes = []
+        search_result.edges = []
+        search_result.episodes = [episode]
+        mock_graphiti.search_ = AsyncMock(return_value=search_result)
+
+        result = await memory.get_context_for_coder("src/app.py")
+
+        # Should not crash — empty source_description means no local insight
+        assert len(result["local_insights"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_context_empty_results(self, memory, mock_graphiti):
+        """Should return empty collections when search returns nothing."""
+        search_result = MagicMock()
+        search_result.nodes = []
+        search_result.edges = []
+        search_result.episodes = []
+        mock_graphiti.search_ = AsyncMock(return_value=search_result)
+
+        result = await memory.get_context_for_coder("nonexistent.py")
+
+        assert result["nodes"] == []
+        assert result["active_bugs"] == []
+        assert result["raw_edges"] == []
+        assert result["local_insights"] == []
+
+
+# ===========================================================================
+# Expanded Tests: Edge Cases
+# ===========================================================================
+
+
+class TestMemoryEdgeCases:
+    """Verify behavior with unusual inputs and configurations."""
+
+    def test_group_id_default(self, memory):
+        """Should default group_id to 'default'."""
+        assert memory.group_id == "default"
+
+    def test_group_id_custom(self, mock_graphiti):
+        """Should accept custom group_id."""
+        mem = LoomSwarmMemory(graphiti=mock_graphiti, group_id="my-project")
+        assert mem.group_id == "my-project"
+
+    def test_allowed_root_stored(self, mock_graphiti, tmp_path):
+        """Should store allowed_root when provided."""
+        mem = LoomSwarmMemory(graphiti=mock_graphiti, allowed_root=str(tmp_path))
+        assert mem.allowed_root == str(tmp_path)
+
+    def test_allowed_root_none_by_default(self, memory):
+        """Should default allowed_root to None."""
+        assert memory.allowed_root is None

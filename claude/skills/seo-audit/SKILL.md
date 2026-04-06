@@ -1,6 +1,8 @@
 ﻿---
 name: seo-audit
 description: Run a Loom-style SEO assessment for meta tags, structured data, crawlability, and Core Web Vitals
+argument-hint: "[URL or file paths]"
+allowed-tools: Read, Glob, Grep, Bash(*), Agent
 ---
 
 

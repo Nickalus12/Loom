@@ -1,6 +1,8 @@
 ﻿---
 name: security-audit
 description: Run a Loom-style security assessment for authentication, authorization, data exposure, secret handling, and exploitability risks
+argument-hint: "[scope or file paths]"
+allowed-tools: Read, Glob, Grep, Bash(git:*), Agent
 ---
 
 

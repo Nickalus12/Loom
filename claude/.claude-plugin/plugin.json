@@ -1,9 +1,10 @@
-﻿{
+{
   "name": "loom",
-  "version": "1.5.0",
-  "description": "Multi-agent development orchestration platform â€” 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands",
+  "version": "2.0.0",
+  "description": "Multi-agent orchestration platform \u2014 22 specialists, local Ollama agents with tool-calling, 3-tier safety pipeline, Graphiti memory, and standalone review/debug/security/perf/seo/a11y/compliance commands",
   "author": {
-    "name": "Nickalus12"
+    "name": "Nickalus Brewer",
+    "url": "https://github.com/Nickalus12"
   },
   "license": "Apache-2.0",
   "hooks": "./hooks/claude-hooks.json",
@@ -13,7 +14,12 @@
   "keywords": [
     "orchestration",
     "multi-agent",
+    "MCP",
     "planning",
-    "execution"
+    "execution",
+    "local-inference",
+    "ollama",
+    "powershell",
+    "tool-calling"
   ]
 }

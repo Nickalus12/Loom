@@ -1,37 +1,64 @@
-﻿{
+{
   "name": "loom",
-  "version": "1.5.0",
-  "description": "Multi-agent development orchestration platform â€” 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands",
+  "version": "2.0.0",
+  "description": "Multi-agent orchestration platform \u2014 22 specialists, local Ollama agents with tool-calling, 3-tier safety pipeline, Graphiti memory, and standalone review/debug/security/perf/seo/a11y/compliance commands",
   "contextFileName": "GEMINI.md",
+  "excludeTools": ["run_shell_command"],
+  "plan": {
+    "directory": "docs/loom/plans"
+  },
   "settings": [
     {
+      "name": "Azure AI Foundry Key",
+      "description": "API key for your Azure AI Foundry serverless deployment (heavy tier primary).",
+      "envVar": "AZURE_FOUNDRY_KEY",
+      "sensitive": true
+    },
+    {
+      "name": "Azure Heavy Endpoint",
+      "description": "Base URL for your Azure AI Foundry heavy model deployment.",
+      "envVar": "AZURE_HEAVY_BASE"
+    },
+    {
+      "name": "Gemini API Key",
+      "description": "Google Gemini API key (heavy tier fallback + light tier primary + embeddings).",
+      "envVar": "GEMINI_API_KEY",
+      "sensitive": true
+    },
+    {
+      "name": "LiteLLM Master Key",
+      "description": "Authentication key for the LiteLLM proxy server.",
+      "envVar": "LITELLM_MASTER_KEY",
+      "sensitive": true
+    },
+    {
       "name": "Heavy Model Alias",
-      "description": "The virtual model name or deployment ID for complex reasoning tasks (default: loom-heavy).",
+      "description": "Virtual model name for complex reasoning tasks (default: heavy/default).",
       "envVar": "LOOM_HEAVY_MODEL"
     },
     {
       "name": "Light Model Alias",
-      "description": "The virtual model name or deployment ID for utility and lightweight tasks (default: loom-light).",
+      "description": "Virtual model name for utility and lightweight tasks (default: light/default).",
       "envVar": "LOOM_LIGHT_MODEL"
     },
     {
       "name": "Disabled Agents",
-      "description": "Comma-separated list of agent names to exclude from implementation planning.",
+      "description": "Comma-separated list of agent names to exclude from planning.",
       "envVar": "LOOM_DISABLED_AGENTS"
     },
     {
       "name": "Max Retries",
-      "description": "Maximum retry attempts per phase before escalating to user.",
+      "description": "Maximum retry attempts per phase before escalating (default: 2).",
       "envVar": "LOOM_MAX_RETRIES"
     },
     {
       "name": "Auto Archive",
-      "description": "Automatically archive session state on successful completion (true/false).",
+      "description": "Auto-archive session on success (true/false, default: true).",
       "envVar": "LOOM_AUTO_ARCHIVE"
     },
     {
-      "name": "Validation",
-      "description": "Post-phase validation strictness level (strict/normal/lenient).",
+      "name": "Validation Strictness",
+      "description": "Post-phase validation level: strict/normal/lenient (default: normal).",
       "envVar": "LOOM_VALIDATION_STRICTNESS"
     },
     {
@@ -41,16 +68,36 @@
     },
     {
       "name": "Max Concurrent",
-      "description": "Maximum subagents emitted in one native parallel batch turn (0 = dispatch the entire ready batch).",
+      "description": "Max subagents per parallel batch (0 = unlimited, default: 0).",
       "envVar": "LOOM_MAX_CONCURRENT"
     },
     {
       "name": "Execution Mode",
-      "description": "Phase 3 execution mode: 'parallel' (native concurrent subagents), 'sequential' (one at a time), or 'ask' (prompt each time). Default: ask.",
+      "description": "Phase execution: parallel/sequential/ask (default: ask).",
       "envVar": "LOOM_EXECUTION_MODE"
+    },
+    {
+      "name": "Craft Mode",
+      "description": "Craft pipeline mode: cloud (LiteLLM) or local (Ollama). Default: cloud.",
+      "envVar": "LOOM_CRAFT_MODE"
+    },
+    {
+      "name": "Agent Tool Model",
+      "description": "Ollama model for agent tool-calling turns (default: qwen3:4b).",
+      "envVar": "LOOM_AGENT_TOOL_MODEL"
+    },
+    {
+      "name": "Agent Analysis Model",
+      "description": "Ollama model for agent analysis turns (default: deepseek-coder-v2:16b).",
+      "envVar": "LOOM_AGENT_ANALYSIS_MODEL"
     }
   ],
   "mcpServers": {
+    "loom": {
+      "command": "node",
+      "args": ["${extensionPath}/mcp/loom-server.js"],
+      "cwd": "${extensionPath}"
+    },
     "loom-swarm": {
       "command": "uv",
       "args": [

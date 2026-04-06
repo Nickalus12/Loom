@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
@@ -22096,7 +22096,7 @@ var require_types2 = __commonJS({
       /** Intended for programmatic or logical use, but used as a display name in past specs or fallback */
       name: z.string(),
       /**
-       * Intended for UI and end-user contexts â€” optimized to be human-readable and easily understood,
+       * Intended for UI and end-user contexts â€" optimized to be human-readable and easily understood,
        * even by those unfamiliar with domain-specific terminology.
        *
        * If not provided, the name should be used for display (except for Tool,

@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 /**
  * Loom policy enforcer for Claude Code.
@@ -61,8 +61,28 @@ const DENY_RULES = [
   {
     "matchType": "regex",
     "pattern": "<<",
-    "reason": "Heredoc corrupts structured content (YAML, Markdown, JSON) â€” use Write instead"
-  }
+    "reason": "Heredoc corrupts structured content (YAML, Markdown, JSON) -- use Write instead"
+  },
+  {
+    "matchType": "regex",
+    "pattern": "\\bchmod\\s+777\\b",
+    "reason": "World-writable permissions are a security risk"
+  },
+  {
+    "matchType": "word",
+    "pattern": "chown",
+    "reason": "Changing file ownership can break permissions"
+  },
+  {
+    "matchType": "word",
+    "pattern": "mkfs",
+    "reason": "Filesystem formatting is destructive"
+  },
+  {
+    "matchType": "regex",
+    "pattern": "\\bdd\\s+if=",
+    "reason": "Raw disk operations can destroy data"
+  },
 ];
 
 const ASK_RULES = [
@@ -75,6 +95,41 @@ const ASK_RULES = [
     "matchType": "regex",
     "pattern": "\\s>>?\\s|\\s>>?$|^>>?\\s|\\d>>?\\s",
     "reason": "Shell output redirection"
+  },
+  {
+    "matchType": "prefix",
+    "pattern": "docker run",
+    "reason": "Running a Docker container"
+  },
+  {
+    "matchType": "prefix",
+    "pattern": "docker exec",
+    "reason": "Executing inside a Docker container"
+  },
+  {
+    "matchType": "prefix",
+    "pattern": "npm run",
+    "reason": "Running an npm script"
+  },
+  {
+    "matchType": "regex",
+    "pattern": "\\bpip\\s+install\\s+--upgrade\\b",
+    "reason": "Upgrading pip packages may change dependency versions"
+  },
+  {
+    "matchType": "regex",
+    "pattern": "\\bpip\\s+install\\s+-U\\b",
+    "reason": "Upgrading pip packages may change dependency versions"
+  },
+  {
+    "matchType": "regex",
+    "pattern": "^env\\b",
+    "reason": "Printing environment may expose credentials"
+  },
+  {
+    "matchType": "regex",
+    "pattern": "^printenv\\b",
+    "reason": "Printing environment may expose credentials"
   }
 ];
 

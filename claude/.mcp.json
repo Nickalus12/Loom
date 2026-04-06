@@ -1,9 +1,24 @@
-﻿{
+{
   "mcpServers": {
     "loom": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/loom-server.js"],
       "cwd": "${CLAUDE_PLUGIN_ROOT}"
+    },
+    "loom-swarm": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "loom",
+        "python",
+        "-m",
+        "loom.server"
+      ],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}/..",
+      "env": {
+        "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/../src"
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -19,6 +20,7 @@ from loom.agent_registry import AgentRegistry
 from loom.local_inference import LocalInferenceEngine
 from loom.powershell_tools import PowerShellREPLManager
 from loom.powershell_tools.kan_engine import PowerShellKANEngine
+from loom.local_agent import LocalAgent
 
 mcp = FastMCP(
     "Loom Enterprise Swarm",
@@ -33,6 +35,7 @@ _swarm_orchestrator: LoomOrchestrator | None = None
 _local_engine: LocalInferenceEngine | None = None
 _ps_manager: PowerShellREPLManager | None = None
 _kan_engine: PowerShellKANEngine | None = None
+_local_agent: LocalAgent | None = None
 
 
 def _get_engines() -> tuple[LoomSwarmMemory, LoomOrchestrator]:
@@ -80,21 +83,53 @@ def _get_ps_manager() -> PowerShellREPLManager:
     return _ps_manager
 
 
-@mcp.tool()
-async def orchestrate_swarm(task: str = Field(description="The complex engineering task to execute via the multi-agent swarm.")) -> str:
-    """
-    Triggers the high-level Loom orchestration workflow.
-    Use this to start a multi-agent reasoning session for features, bugs, or refactors.
-    """
-    try:
-        memory, orchestrator = _get_engines()
-        plan = await orchestrator.execute_swarm(task)
-        phases_summary = "; ".join(
-            f"Phase {p.id} ({p.name}): {p.status}" for p in plan.phases
+def _get_local_agent() -> LocalAgent:
+    """Lazy-initialize the local agent on first use."""
+    global _local_agent
+    if _local_agent is None:
+        memory, _ = _get_engines()
+        engine = _get_local_engine()
+        manager = _get_ps_manager()
+        _local_agent = LocalAgent(
+            inference_engine=engine,
+            ps_manager=manager,
+            memory_engine=memory,
         )
-        return f"Swarm completed — {len(plan.phases)} phases: {phases_summary}"
+    return _local_agent
+
+
+@mcp.tool()
+async def craft(
+    task: str = Field(description="The engineering task to craft via multi-agent pipeline."),
+    mode: str = Field(default="cloud", description="Execution mode: 'cloud' (LiteLLM proxy) or 'local' (Ollama LocalAgent)."),
+) -> str:
+    """Craft a solution using Loom's multi-agent pipeline.
+    Runs: Architect → Security + Quality (parallel) → Coder → Code Review.
+    Use mode='local' to execute phases with the local Ollama agent (tool-calling, git safety, caching)."""
+    try:
+        effective_mode = mode or os.getenv("LOOM_CRAFT_MODE", "cloud")
+        if effective_mode == "local":
+            agent = _get_local_agent()
+            result = await agent.run(
+                f"You are orchestrating a multi-phase engineering task. "
+                f"First analyze the architecture, then implement, then review your work.\n\nTask: {task}"
+            )
+            return json.dumps(result, default=str)
+        else:
+            memory, orchestrator = _get_engines()
+            plan = await orchestrator.execute_swarm(task)
+            phases_summary = "; ".join(
+                f"Phase {p.id} ({p.name}): {p.status}" for p in plan.phases
+            )
+            return json.dumps({
+                "success": True,
+                "phases": len(plan.phases),
+                "summary": phases_summary,
+                "files_created": [f for p in plan.phases for f in p.files_created],
+                "files_modified": [f for p in plan.phases for f in p.files_modified],
+            }, default=str)
     except Exception as e:
-        return f"orchestrate_swarm failed: {e}"
+        return json.dumps({"success": False, "error": f"craft failed: {e}"}, default=str)
 
 @mcp.tool()
 async def get_context_for_coder(target_file: str = Field(description="The file path to retrieve context and bugs for.")) -> dict:
@@ -612,6 +647,24 @@ async def kan_status_ps() -> str:
         return json.dumps(result, default=str)
     except Exception as e:
         return f"kan_status_ps failed: {e}"
+
+
+@mcp.tool()
+async def local_agent_task(
+    task: str = Field(description="Natural language task for the local Ollama agent (e.g., 'Review src/loom/server.py for bugs' or 'Add error handling to the parse function in utils.py')."),
+) -> str:
+    """Run a local Ollama agent that can read, edit, search files, and execute
+    PowerShell commands to accomplish a task. The agent uses tool calling to
+    autonomously work through multi-step tasks like code reviews, bug fixes,
+    and file updates. Features: dual-model routing, git safety branching,
+    result caching, retry on failure, syntax validation, and Graphiti session memory.
+    Configure models via LOOM_AGENT_TOOL_MODEL and LOOM_AGENT_ANALYSIS_MODEL env vars."""
+    try:
+        agent = _get_local_agent()
+        result = await agent.run(task)
+        return json.dumps(result, default=str)
+    except Exception as e:
+        return f"local_agent_task failed: {e}"
 
 
 if __name__ == "__main__":

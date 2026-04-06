@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const KNOWN_AGENTS = Object.freeze([
   'architect',

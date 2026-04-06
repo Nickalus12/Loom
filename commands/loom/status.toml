@@ -33,4 +33,4 @@ Parse the session state and present a concise status summary:
 6. **Errors**: any unresolved errors with brief descriptions
 
 This is a read-only command. Do NOT modify the session state or continue execution.
-If the session state above shows "No active session", inform the user and suggest using `/loom:orchestrate` to start one."""
+If the session state above shows "No active session", inform the user and suggest using `/loom:craft` to start one."""
