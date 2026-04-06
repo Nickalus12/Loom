@@ -1,0 +1,73 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Do something",
+      "ts_ms": 0,
+      "duration_ms": 27818,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 15
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 939,
+      "duration_ms": 7692,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "find_files",
+      "ts_ms": 8628,
+      "duration_ms": 3,
+      "data": {
+        "args": {
+          "pattern": "*"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 8631,
+      "duration_ms": 6283,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "run_powershell",
+      "ts_ms": 13931,
+      "duration_ms": 983,
+      "data": {
+        "args": {
+          "command": "Get-ChildItem"
+        }
+      },
+      "parent": 3
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 3",
+      "ts_ms": 14914,
+      "duration_ms": 7450,
+      "data": {
+        "turn": 3
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 6,
+  "total_duration_ms": 27819,
+  "saved_at": "2026-04-06T17:48:47.306453+00:00"
+}

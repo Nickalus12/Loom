@@ -165,8 +165,11 @@ async def craft(
             )
             tel.waterfall.begin("agent_run")
             result = await agent.run(
-                f"You are orchestrating a multi-phase engineering task. "
-                f"First analyze the architecture, then implement, then review your work.\n\nTask: {task}"
+                f"You are an elite autonomous engineering agent. Complete this task end-to-end "
+                f"without stopping or asking for confirmation. You have full access to all project "
+                f"files, git, tests, and PowerShell tools. Work through all phases: understand the "
+                f"codebase, design the solution, implement all changes, verify with tests/build, "
+                f"and commit when done.\n\nTask: {task}"
             )
             tel.waterfall.end()
             return json.dumps(result, default=str)
@@ -463,6 +466,83 @@ async def find_files_ps(
         return _error_response("find_files_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
+async def edit_file_ps(
+    path: str = Field(description="File path to edit."),
+    old_text: str = Field(description="Exact text to find and replace."),
+    new_text: str = Field(description="Replacement text."),
+    regex: bool = False,
+    replace_all: bool = False,
+) -> str:
+    """Patch a file in-place — replace old_text with new_text. Faster than read+write for targeted edits.
+    Set regex=true for pattern matching. Set replace_all=true to replace every occurrence."""
+    try:
+        manager = _get_ps_manager()
+        flags = ""
+        if regex:
+            flags += " -Regex"
+        if replace_all:
+            flags += " -All"
+        old_esc = old_text.replace("'", "''")
+        new_esc = new_text.replace("'", "''")
+        cmd = f"Edit-LoomFile '{_escape_ps(path)}' -OldText '{old_esc}' -NewText '{new_esc}'{flags}"
+        result = await manager.execute(cmd, timeout=30)
+        return json.dumps(result, default=str)
+    except Exception as e:
+        return _error_response("edit_file_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
+
+
+@mcp.tool()
+async def get_port_status_ps(
+    ports: str = Field(default="8080,8443,11434,7474,7687,5432,3000,3001", description="Comma-separated port numbers to check."),
+) -> str:
+    """Check which ports are listening and which process owns each one."""
+    try:
+        manager = _get_ps_manager()
+        port_list = "@(" + ",".join(p.strip() for p in ports.split(",") if p.strip()) + ")"
+        result = await manager.execute(f"Get-LoomPortStatus -Ports {port_list}", timeout=15)
+        return json.dumps(result, default=str)
+    except Exception as e:
+        return _error_response("get_port_status_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
+
+
+@mcp.tool()
+async def invoke_http_ps(
+    uri: str = Field(description="localhost or private-IP URL to call (e.g. http://localhost:11434/api/tags)."),
+    method: str = "GET",
+    body: str = "",
+) -> str:
+    """Make an HTTP request to a localhost or private-IP endpoint. Use to inspect local services (Ollama, Neo4j, APIs)."""
+    try:
+        manager = _get_ps_manager()
+        body_param = f" -Body '{body.replace(chr(39), chr(39)*2)}'" if body else ""
+        cmd = f"Invoke-LoomHttpRequest '{_escape_ps(uri)}' -Method '{method}'{body_param}"
+        result = await manager.execute(cmd, timeout=35)
+        return json.dumps(result, default=str)
+    except Exception as e:
+        return _error_response("invoke_http_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
+
+
+@mcp.tool()
+async def get_process_info_ps(
+    name: str = "",
+    pid: int = -1,
+) -> str:
+    """Get process details (CPU, memory, threads). Filter by name or PID, or get top 20 by CPU."""
+    try:
+        manager = _get_ps_manager()
+        if pid > 0:
+            cmd = f"Get-LoomProcessInfo -Id {pid}"
+        elif name:
+            cmd = f"Get-LoomProcessInfo -Name '{_escape_ps(name)}'"
+        else:
+            cmd = "Get-LoomProcessInfo"
+        result = await manager.execute(cmd, timeout=15)
+        return json.dumps(result, default=str)
+    except Exception as e:
+        return _error_response("get_process_info_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
+
+
+@mcp.tool()
 async def git_status_ps() -> str:
     """Get git status with structured output."""
     try:
@@ -733,17 +813,18 @@ async def kan_status_ps() -> str:
 
 @mcp.tool()
 async def local_agent_task(
-    task: str = Field(description="Natural language task for the local Ollama agent."),
+    task: str = Field(description="Natural language task for the autonomous agent."),
     max_turns: int = 15,
     tool_model: str = "",
     analysis_model: str = "",
     hybrid: bool = False,
 ) -> str:
-    """Run a local Ollama agent with tool-calling to autonomously accomplish tasks.
-    The agent can read, edit, search files, and run PowerShell commands.
-    Set max_turns to control depth (5=quick, 15=normal, 30=thorough).
-    When hybrid is not explicitly set, auto-detects whether cloud is available and enables hybrid mode.
-    Override tool_model/analysis_model for different models."""
+    """Run an autonomous agent that accomplishes tasks end-to-end using all available tools.
+    Tools: read/write/edit/search files, run PowerShell (git, tests, builds, system inspection),
+    call all 19 Loom PS functions including Edit-LoomFile, Get-LoomPortStatus,
+    Invoke-LoomHttpRequest, Get-LoomProcessInfo.
+    max_turns: 5=quick, 15=normal, 30=deep. Auto-detects hybrid cloud+local mode.
+    The agent works completely autonomously — no confirmation needed."""
     try:
         # Auto-detect hybrid mode and best models when not explicitly configured
         effective_hybrid = hybrid

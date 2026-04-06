@@ -1,0 +1,71 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Read file twice",
+      "ts_ms": 0,
+      "duration_ms": 0,
+      "data": {
+        "model": "test-tool-model",
+        "max_turns": 5
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 0,
+      "duration_ms": 0,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file",
+      "ts_ms": 0,
+      "duration_ms": 0,
+      "data": {
+        "args": {
+          "path": "src/a.py"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file",
+      "ts_ms": 0,
+      "duration_ms": 0,
+      "data": {
+        "args": {
+          "path": "src/a.py"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "cache_hit",
+      "name": "read_file",
+      "ts_ms": 0,
+      "duration_ms": null,
+      "data": {},
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 0,
+      "duration_ms": 0,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 6,
+  "total_duration_ms": 1,
+  "saved_at": "2026-04-06T15:59:24.826996+00:00"
+}

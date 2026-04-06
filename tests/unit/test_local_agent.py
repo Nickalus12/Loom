@@ -882,7 +882,7 @@ class TestValidation:
                 return {"success": True, "output": "", "errors": ""}
             if "Write-LoomFile" in cmd:
                 return {"success": True, "output": "Written.", "errors": ""}
-            if "python -c" in cmd:
+            if "py_compile" in cmd:
                 return {"success": True, "output": "OK", "errors": ""}
             if "git diff" in cmd:
                 return {"success": True, "output": "diff", "errors": ""}
@@ -892,7 +892,7 @@ class TestValidation:
 
         result = await agent.run("Write python file")
 
-        ast_calls = [c for c in executed_commands if "ast.parse" in c]
+        ast_calls = [c for c in executed_commands if "py_compile" in c]
         assert len(ast_calls) == 1
         assert len(result["validation_results"]) == 1
         assert result["validation_results"][0]["valid"] is True
@@ -932,7 +932,7 @@ class TestValidation:
         assert len(result["validation_results"]) == 0
 
     async def test_failed_validation_in_results(self, agent, mock_ps_manager):
-        """When ast.parse fails, validation_results should contain a failure entry."""
+        """When py_compile fails, validation_results should contain a failure entry."""
         # LLM: planning(1) + tool_turn(1) + final(1) + analysis(1) = 4
         agent._client.chat.completions.create = AsyncMock(
             side_effect=[
@@ -950,7 +950,7 @@ class TestValidation:
                 return {"success": True, "output": "", "errors": ""}
             if "Write-LoomFile" in cmd:
                 return {"success": True, "output": "Written.", "errors": ""}
-            if "python -c" in cmd:
+            if "py_compile" in cmd:
                 return {"success": False, "output": "", "errors": "SyntaxError: invalid syntax"}
             if "git diff" in cmd:
                 return {"success": True, "output": "diff", "errors": ""}

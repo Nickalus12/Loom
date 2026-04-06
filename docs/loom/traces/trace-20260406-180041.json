@@ -1,0 +1,51 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Review code",
+      "ts_ms": 0,
+      "duration_ms": 196873,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 15
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 599,
+      "duration_ms": 24357,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "find_files",
+      "ts_ms": 21354,
+      "duration_ms": 3602,
+      "data": {
+        "args": {
+          "pattern": "*.py"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 24956,
+      "duration_ms": 16494,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 4,
+  "total_duration_ms": 196874,
+  "saved_at": "2026-04-06T18:00:41.554139+00:00"
+}

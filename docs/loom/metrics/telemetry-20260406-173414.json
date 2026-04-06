@@ -1,0 +1,104 @@
+{
+  "uptime_seconds": 234.137,
+  "counters": {
+    "agent_tasks_total": 1.0,
+    "memory_searches": 1.0,
+    "agent_model_calls": 2.0,
+    "model_calls_total": 2.0,
+    "model_tokens_input": 2432.0,
+    "model_tokens_output": 630.0,
+    "agent_tool_calls_total": 1.0,
+    "ps_result_cache_misses_total": 1.0,
+    "ps_commands_total": 1.0,
+    "ps_sessions_created": 1.0,
+    "memory_episodes_stored": 1.0,
+    "agent_tasks_completed": 1.0,
+    "agent_turns_total": 2.0
+  },
+  "labeled_counters": {
+    "agent_model_calls": {
+      "{\"model\": \"qwen3:4b\"}": 2.0
+    },
+    "model_calls_total": {
+      "{\"provider\": \"ollama\"}": 2.0
+    },
+    "model_call_duration_seconds": {
+      "{\"provider\": \"ollama\"}": 2.0
+    },
+    "agent_tool_calls_total": {
+      "{\"tool\": \"find_files\"}": 1.0
+    },
+    "agent_tool_latency_seconds": {
+      "{\"tool\": \"find_files\"}": 1.0
+    }
+  },
+  "durations": {
+    "model_call_duration_seconds": {
+      "count": 2,
+      "min": 18.827,
+      "max": 36.479,
+      "avg": 27.653,
+      "p95": 36.479,
+      "total": 55.307
+    },
+    "ps_safety_kan_seconds": {
+      "count": 1,
+      "min": 0.003,
+      "max": 0.003,
+      "avg": 0.003,
+      "p95": 0.003,
+      "total": 0.003
+    },
+    "ps_safety_total_seconds": {
+      "count": 1,
+      "min": 0.003,
+      "max": 0.003,
+      "avg": 0.003,
+      "p95": 0.003,
+      "total": 0.003
+    },
+    "ps_command_output_bytes": {
+      "count": 1,
+      "min": 10967,
+      "max": 10967,
+      "avg": 10967.0,
+      "p95": 10967,
+      "total": 10967
+    },
+    "agent_tool_latency_seconds": {
+      "count": 1,
+      "min": 44.129,
+      "max": 44.129,
+      "avg": 44.129,
+      "p95": 44.129,
+      "total": 44.129
+    },
+    "agent_duration_seconds": {
+      "count": 1,
+      "min": 126.999,
+      "max": 126.999,
+      "avg": 126.999,
+      "p95": 126.999,
+      "total": 126.999
+    }
+  },
+  "waterfall": [
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [],
+      "duration_ms": 0
+    }
+  ],
+  "saved_at": "2026-04-06T17:34:14.352901+00:00"
+}

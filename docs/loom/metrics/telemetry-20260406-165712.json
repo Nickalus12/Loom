@@ -1,0 +1,29 @@
+{
+  "uptime_seconds": 14.517,
+  "counters": {
+    "ps_commands_total": 195.0,
+    "ps_sessions_created": 5.0,
+    "ps_sessions_reused": 190.0
+  },
+  "labeled_counters": {},
+  "durations": {
+    "ps_safety_kan_seconds": {
+      "count": 195,
+      "min": 0.0,
+      "max": 0.008,
+      "avg": 0.0,
+      "p95": 0.002,
+      "total": 0.052
+    },
+    "ps_safety_total_seconds": {
+      "count": 195,
+      "min": 0.0,
+      "max": 0.008,
+      "avg": 0.0,
+      "p95": 0.002,
+      "total": 0.053
+    }
+  },
+  "waterfall": [],
+  "saved_at": "2026-04-06T16:57:12.162606+00:00"
+}

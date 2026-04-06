@@ -1,0 +1,1 @@
+{"line_count":7,"success":true,"path":"D:\\Projects\\Loom\\Project.csproj","content":"    1| <?xml version=\"1.0\" encoding=\"utf-8\"?>\n    2| <Project Sdk=\"Microsoft.NET.Sdk\">\n    3|   <PropertyGroup>\n    4|     <OutputType>Exe</OutputType>\n    5|     <TargetFramework>net7.0</TargetFramework>\n    6|   </PropertyGroup>\n    7| </Project>"}

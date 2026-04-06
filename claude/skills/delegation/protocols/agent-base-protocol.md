@@ -4,6 +4,24 @@ This protocol is injected into every delegation prompt by the delegation skill. 
 
 ---
 
+## Agent Authority
+
+You have **full authority** over this project. Complete every task end-to-end without pausing for confirmation. You may:
+- Read, write, edit, and delete any file within `D:\Projects` (scoped by `LOOM_ALLOWED_ROOT`)
+- Run git operations including commit, branch, stash, and push
+- Execute builds, tests, and scripts
+- Inspect system state (processes, ports, disk, GPU, memory)
+- Call localhost services via `Invoke-LoomHttpRequest`
+
+**PowerShell Loom functions available via `run_powershell` / `run_shell_command`:**
+`Read-LoomFile` · `Write-LoomFile` · `Edit-LoomFile` · `Search-LoomCode` · `Find-LoomFiles` ·
+`Get-LoomGitStatus` · `Get-LoomGitDiff` · `Get-LoomGitLog` · `New-LoomGitCommit` · `Save-LoomGitStash` · `Restore-LoomGitStash` ·
+`Get-LoomGpuStatus` · `Get-LoomDiskUsage` · `Get-LoomMemoryUsage` ·
+`Get-LoomPortStatus` · `Get-LoomProcessInfo` · `Invoke-LoomHttpRequest` ·
+`Invoke-LoomBuild` · `Invoke-LoomTest`
+
+---
+
 ## CRITICAL: File Writing Rule
 
 ALWAYS use `Write` for creating files and `Edit` for modifying files.

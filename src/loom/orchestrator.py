@@ -2,11 +2,17 @@ import asyncio
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass, field
 
 from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
+
+try:
+    from loom.telemetry import get_telemetry as _get_telemetry
+except ImportError:
+    _get_telemetry = None  # type: ignore[assignment]
 
 
 @dataclass
@@ -43,6 +49,38 @@ class LoomOrchestrator:
             api_key=os.getenv("LITELLM_MASTER_KEY", ""),
         )
 
+    def _tel_inc(self, name: str, value: float = 1.0, **labels: str) -> None:
+        if _get_telemetry is None:
+            return
+        try:
+            _get_telemetry().inc(name, value, **labels)
+        except Exception:
+            pass
+
+    def _tel_observe(self, name: str, value: float, **labels: str) -> None:
+        if _get_telemetry is None:
+            return
+        try:
+            _get_telemetry().observe(name, value, **labels)
+        except Exception:
+            pass
+
+    def _tel_wf_begin(self, name: str) -> None:
+        if _get_telemetry is None:
+            return
+        try:
+            _get_telemetry().waterfall.begin(name)
+        except Exception:
+            pass
+
+    def _tel_wf_end(self) -> None:
+        if _get_telemetry is None:
+            return
+        try:
+            _get_telemetry().waterfall.end()
+        except Exception:
+            pass
+
     async def dispatch_agent(self, agent_name: str, task: str, context: str = "") -> str:
         """
         Dispatches an agent through the LiteLLM proxy using its registry definition.
@@ -65,36 +103,45 @@ class LoomOrchestrator:
             agent_name, config.tier, model_string, config.temperature,
         )
 
-        last_error: Exception | None = None
-        for attempt in range(self.max_retries + 1):
-            try:
-                response = await self._client.chat.completions.create(
-                    model=model_string,
-                    messages=[
-                        {"role": "system", "content": config.methodology},
-                        {"role": "user", "content": user_content},
-                    ],
-                    temperature=config.temperature,
-                    timeout=config.timeout_mins * 60,
-                )
-                result = response.choices[0].message.content
-                if not result:
-                    raise RuntimeError(f"Agent '{agent_name}' returned empty response")
-                return result
-            except Exception as e:
-                last_error = e
-                if attempt < self.max_retries:
-                    logger.warning(
-                        "Agent '%s' dispatch attempt %d/%d failed: %s",
-                        agent_name, attempt + 1, self.max_retries + 1, e,
-                    )
-                    continue
-                break
+        messages = [
+            {"role": "system", "content": config.methodology},
+            {"role": "user", "content": user_content},
+        ]
+        input_tokens_est = sum(len(m.get("content", "")) // 4 for m in messages)
 
-        raise RuntimeError(
-            f"Agent '{agent_name}' dispatch failed after {self.max_retries + 1} attempts "
-            f"on {config.tier} tier (model={model_string}): {last_error}"
-        ) from last_error
+        # Single attempt — phase-level retries in _execute_phase handle transient failures.
+        # Dual-layer retry previously caused up to (max_retries+1)^2 API calls per failure.
+        call_start = time.monotonic()
+        self._tel_inc("orch_agent_calls_total", agent=agent_name, tier=config.tier)
+        try:
+            response = await self._client.chat.completions.create(
+                model=model_string,
+                messages=messages,
+                temperature=config.temperature,
+                timeout=config.timeout_mins * 60,
+            )
+            result = response.choices[0].message.content
+            if not result:
+                raise RuntimeError(f"Agent '{agent_name}' returned empty response")
+
+            call_elapsed = time.monotonic() - call_start
+            self._tel_observe("orch_agent_call_duration_seconds", call_elapsed, agent=agent_name)
+
+            usage = getattr(response, "usage", None)
+            if usage:
+                self._tel_inc("orch_tokens_input", value=float(getattr(usage, "prompt_tokens", input_tokens_est)), agent=agent_name)
+                self._tel_inc("orch_tokens_output", value=float(getattr(usage, "completion_tokens", len(result) // 4)), agent=agent_name)
+            else:
+                self._tel_inc("orch_tokens_input", value=float(input_tokens_est), agent=agent_name)
+                self._tel_inc("orch_tokens_output", value=float(len(result) // 4), agent=agent_name)
+
+            return result
+        except Exception as e:
+            self._tel_inc("orch_agent_call_errors", agent=agent_name)
+            raise RuntimeError(
+                f"Agent '{agent_name}' dispatch failed on {config.tier} tier "
+                f"(model={model_string}): {e}"
+            ) from e
 
     def _parse_handoff(self, response: str) -> dict:
         """
@@ -188,6 +235,9 @@ class LoomOrchestrator:
         Executes a single phase: dispatches the agent, parses the handoff
         response, and updates phase state. Retries up to max_retries on failure.
         """
+        span_name = f"phase_{phase.id}:{phase.name}[{phase.agent}]"
+        self._tel_wf_begin(span_name)
+        phase_start = time.monotonic()
         phase.status = "in_progress"
         context = self._build_context_chain(plan, phase)
 
@@ -204,10 +254,16 @@ class LoomOrchestrator:
             phase.files_modified = handoff["task_report"].get("files_modified", [])
             phase.status = "completed"
 
-            logger.info("Phase %d (%s) completed by %s", phase.id, phase.name, phase.agent)
+            phase_elapsed = time.monotonic() - phase_start
+            self._tel_observe("orch_phase_duration_seconds", phase_elapsed, agent=phase.agent, phase=phase.name)
+            self._tel_inc("orch_phases_completed", agent=phase.agent)
+            self._tel_inc("orch_files_created", value=float(len(phase.files_created)))
+            self._tel_inc("orch_files_modified", value=float(len(phase.files_modified)))
+            logger.info("Phase %d (%s) completed by %s in %.1fs", phase.id, phase.name, phase.agent, phase_elapsed)
 
         except Exception as e:
             phase.retry_count += 1
+            self._tel_inc("orch_phase_retries" if phase.retry_count <= self.max_retries else "orch_phases_failed", agent=phase.agent)
             if phase.retry_count <= self.max_retries:
                 logger.warning(
                     "Phase %d failed (attempt %d/%d): %s",
@@ -217,7 +273,11 @@ class LoomOrchestrator:
             else:
                 phase.status = "failed"
                 logger.error("Phase %d failed permanently: %s", phase.id, e)
+                self._tel_wf_end()
                 raise
+        finally:
+            if phase.status in ("completed", "pending"):
+                self._tel_wf_end()
 
     def validate_plan(self, plan: SwarmPlan) -> list[str]:
         """
@@ -280,12 +340,20 @@ class LoomOrchestrator:
             raise ValueError(f"Invalid plan: {'; '.join(validation_errors)}")
 
         logger.info("Executing plan: %s (%d phases)", plan.task, len(plan.phases))
+        self._tel_inc("orch_plans_started")
+        plan_start = time.monotonic()
 
         await self.memory.build_indices_and_constraints()
 
         while True:
             ready = self._get_ready_phases(plan)
             if not ready:
+                # Deadlock detection: phases stuck in_progress with no ready work
+                in_progress = [p for p in plan.phases if p.status == "in_progress"]
+                pending = [p for p in plan.phases if p.status == "pending"]
+                if in_progress or pending:
+                    stuck = [f"{p.id}:{p.name}({p.status})" for p in in_progress + pending]
+                    raise RuntimeError(f"Plan deadlocked — phases not completing: {stuck}")
                 break
 
             parallel_batch = [p for p in ready if p.parallel]
@@ -293,8 +361,12 @@ class LoomOrchestrator:
 
             if parallel_batch:
                 logger.info("Dispatching parallel batch: %s", [p.name for p in parallel_batch])
+                self._tel_inc("orch_parallel_batches")
                 tasks = [self._execute_phase(plan, p) for p in parallel_batch]
-                await asyncio.gather(*tasks, return_exceptions=True)
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for r in results:
+                    if isinstance(r, BaseException):
+                        raise RuntimeError(f"Parallel phase raised: {r}") from r
                 for p in parallel_batch:
                     if p.status == "failed":
                         raise RuntimeError(f"Phase {p.id} ({p.name}) failed permanently")
@@ -309,7 +381,10 @@ class LoomOrchestrator:
             names = [f"{p.id}:{p.name}" for p in failed]
             raise RuntimeError(f"Plan incomplete — failed phases: {names}")
 
-        logger.info("Plan execution complete: all %d phases succeeded", len(plan.phases))
+        plan_elapsed = time.monotonic() - plan_start
+        self._tel_observe("orch_plan_duration_seconds", plan_elapsed)
+        self._tel_inc("orch_plans_completed")
+        logger.info("Plan execution complete: all %d phases succeeded in %.1fs", len(plan.phases), plan_elapsed)
         return plan
 
     # Keyword groups with associated weights.  Each group maps a plan type
@@ -375,11 +450,37 @@ class LoomOrchestrator:
             "feature": 1.5,
             "new": 1.0,
         },
+        "optimize": {
+            "optimize": 3.0,
+            "performance": 3.0,
+            "slow": 2.5,
+            "speed up": 2.5,
+            "bottleneck": 2.5,
+            "latency": 2.0,
+            "memory": 2.0,
+            "profile": 2.0,
+            "benchmark": 2.0,
+            "efficient": 1.5,
+        },
+        "deploy": {
+            "deploy": 3.0,
+            "deployment": 3.0,
+            "ci/cd": 3.0,
+            "pipeline": 2.5,
+            "docker": 2.5,
+            "kubernetes": 2.5,
+            "release": 2.0,
+            "publish": 2.0,
+            "ship": 1.5,
+            "infrastructure": 2.0,
+            "terraform": 2.5,
+            "github actions": 2.5,
+        },
     }
 
     # Plan types that can append an extra test phase when "test" keywords
     # co-occur with another primary plan type.
-    _TEST_APPENDABLE_PLANS = {"debug", "build", "refactor", "document"}
+    _TEST_APPENDABLE_PLANS = {"debug", "build", "refactor", "document", "optimize"}
 
     def _score_keyword_groups(self, task: str) -> dict[str, float]:
         """Score each keyword group against *task* and return the totals."""
@@ -421,6 +522,8 @@ class LoomOrchestrator:
             "test": self._plan_test,
             "document": self._plan_document,
             "build": self._plan_build,
+            "optimize": self._plan_optimize,
+            "deploy": self._plan_deploy,
         }
 
         plan = plan_map[best_type](task)
@@ -698,6 +801,92 @@ class LoomOrchestrator:
             ],
         )
 
+    def _plan_optimize(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
+            task=task,
+            phases=[
+                Phase(
+                    id=1,
+                    name="Performance Analysis",
+                    agent="performance_engineer",
+                    objective=(
+                        "Profile the relevant code paths and identify bottlenecks. "
+                        "Measure baseline metrics: latency, throughput, memory usage. "
+                        "Rank issues by impact and propose specific optimizations."
+                    ),
+                ),
+                Phase(
+                    id=2,
+                    name="Implementation",
+                    agent="coder",
+                    objective=(
+                        "Implement the performance optimizations identified by the analysis. "
+                        "Apply changes incrementally, preserving correctness. "
+                        "Add benchmarks or measurements to quantify improvement."
+                    ),
+                    blocked_by=[1],
+                ),
+                Phase(
+                    id=3,
+                    name="Verification",
+                    agent="performance_engineer",
+                    objective=(
+                        "Verify the optimizations achieve the expected improvement. "
+                        "Compare before/after metrics and confirm no regressions were introduced."
+                    ),
+                    blocked_by=[2],
+                ),
+            ],
+        )
+
+    def _plan_deploy(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
+            task=task,
+            phases=[
+                Phase(
+                    id=1,
+                    name="Infrastructure Analysis",
+                    agent="architect",
+                    objective=(
+                        "Analyze the deployment requirements and current infrastructure. "
+                        "Identify the target environment, dependencies, and deployment strategy."
+                    ),
+                ),
+                Phase(
+                    id=2,
+                    name="Security Review",
+                    agent="security_engineer",
+                    objective=(
+                        "Review the deployment configuration for security risks: exposed secrets, "
+                        "overly permissive IAM, insecure defaults, and supply chain risks."
+                    ),
+                    parallel=True,
+                    blocked_by=[1],
+                ),
+                Phase(
+                    id=3,
+                    name="DevOps Implementation",
+                    agent="devops_engineer",
+                    objective=(
+                        "Implement the deployment pipeline, infrastructure configuration, "
+                        "and automation scripts based on the architect's plan and security findings. "
+                        "Include health checks, rollback procedures, and monitoring setup."
+                    ),
+                    blocked_by=[1, 2],
+                ),
+                Phase(
+                    id=4,
+                    name="Review",
+                    agent="code_reviewer",
+                    objective=(
+                        "Review all infrastructure code and pipeline configuration for correctness, "
+                        "security, and adherence to infrastructure-as-code best practices."
+                    ),
+                    blocked_by=[3],
+                ),
+            ],
+        )
+
     def plan_summary(self, plan: SwarmPlan) -> str:
         """Return a human-readable summary of a SwarmPlan.
 
@@ -739,5 +928,10 @@ class LoomOrchestrator:
         Uses craft_plan() to select the appropriate phase pipeline based on
         task keywords, then executes it via execute_plan().
         """
-        plan = self.craft_plan(task)
-        return await self.execute_plan(plan)
+        self._tel_wf_begin(f"swarm:{task[:50]}")
+        try:
+            plan = self.craft_plan(task)
+            self._tel_inc("orch_swarm_phases_planned", value=float(len(plan.phases)))
+            return await self.execute_plan(plan)
+        finally:
+            self._tel_wf_end()
