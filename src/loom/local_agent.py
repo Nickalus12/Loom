@@ -228,20 +228,38 @@ class LocalAgent:
         analysis_model: str = "",
         max_turns: int = 15,
         max_result_chars: int = _DEFAULT_MAX_RESULT_CHARS,
+        hybrid: bool = False,
     ) -> None:
-        self._client: AsyncOpenAI = inference_engine._client
+        self._client: AsyncOpenAI = inference_engine._client  # Local Ollama client
         self._ps_manager = ps_manager
         self._memory = memory_engine
+        self._hybrid = hybrid
         self._tool_model = (
             tool_model
             or os.getenv("LOOM_AGENT_TOOL_MODEL", "")
             or "qwen3:4b"
         )
-        self._analysis_model = (
-            analysis_model
-            or os.getenv("LOOM_AGENT_ANALYSIS_MODEL", "")
-            or "deepseek-coder-v2:16b"
-        )
+        # In hybrid mode, analysis goes through cloud (LiteLLM proxy)
+        if hybrid:
+            self._analysis_model = (
+                analysis_model
+                or os.getenv("LOOM_HEAVY_MODEL", "")
+                or "heavy/default"
+            )
+            litellm_key = os.getenv("LITELLM_MASTER_KEY", "")
+            litellm_base = os.getenv("LITELLM_BASE_URL", "http://localhost:4000/v1")
+            self._cloud_client: AsyncOpenAI | None = AsyncOpenAI(
+                base_url=litellm_base, api_key=litellm_key or "sk-loom"
+            )
+            logger.info("[Hybrid] Tool model: %s (local) | Analysis model: %s (cloud via %s)",
+                         self._tool_model, self._analysis_model, litellm_base)
+        else:
+            self._analysis_model = (
+                analysis_model
+                or os.getenv("LOOM_AGENT_ANALYSIS_MODEL", "")
+                or "deepseek-coder-v2:16b"
+            )
+            self._cloud_client = None
         self._max_turns = max_turns
         self._max_result_chars = max_result_chars
 
@@ -547,14 +565,23 @@ class LocalAgent:
             truncated=truncated,
         )
 
+    def _select_client(self, model: str) -> AsyncOpenAI:
+        """Select the right client: cloud for analysis in hybrid mode, local otherwise."""
+        if self._hybrid and self._cloud_client is not None and model == self._analysis_model:
+            return self._cloud_client
+        return self._client
+
     async def _llm_call(
         self,
         model: str,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
     ) -> Any:
+        client = self._select_client(model)
+        provider = "cloud" if client is self._cloud_client else "ollama"
+
         self._telem_inc("agent_model_calls", model=model)
-        self._telem_inc("model_calls_total", provider="ollama")
+        self._telem_inc("model_calls_total", provider=provider)
 
         input_est = sum(len(m.get("content", "")) // 4 for m in messages)
         self._telem_inc("model_tokens_input", value=float(input_est))
@@ -565,27 +592,27 @@ class LocalAgent:
 
         msg_count = len(messages)
         input_chars = sum(len(m.get("content", "")) for m in messages)
-        logger.info("[LLM] Calling %s (%d msgs, ~%d chars)...", model, msg_count, input_chars)
+        logger.info("[LLM] Calling %s via %s (%d msgs, ~%d chars)...", model, provider, msg_count, input_chars)
 
         call_start = time.monotonic()
         try:
             result = await asyncio.wait_for(
-                self._client.chat.completions.create(**kwargs),
+                client.chat.completions.create(**kwargs),
                 timeout=120.0,
             )
         except asyncio.TimeoutError:
-            logger.error("[LLM] TIMEOUT after 120s waiting for %s", model)
-            self._telem_inc("model_call_errors", provider="ollama")
+            logger.error("[LLM] TIMEOUT after 120s waiting for %s (%s)", model, provider)
+            self._telem_inc("model_call_errors", provider=provider)
             raise
         except Exception:
-            logger.error("[LLM] ERROR after %.1fs from %s", time.monotonic() - call_start, model, exc_info=True)
-            self._telem_inc("model_call_errors", provider="ollama")
+            logger.error("[LLM] ERROR after %.1fs from %s (%s)", time.monotonic() - call_start, model, provider, exc_info=True)
+            self._telem_inc("model_call_errors", provider=provider)
             raise
 
         call_elapsed = time.monotonic() - call_start
         has_tools = bool(result.choices[0].message.tool_calls)
-        logger.info("[LLM] %s responded in %.1fs (tool_calls=%s)", model, call_elapsed, has_tools)
-        self._telem_observe("model_call_duration_seconds", call_elapsed, provider="ollama")
+        logger.info("[LLM] %s (%s) responded in %.1fs (tool_calls=%s)", model, provider, call_elapsed, has_tools)
+        self._telem_observe("model_call_duration_seconds", call_elapsed, provider=provider)
 
         content = result.choices[0].message.content
         if isinstance(content, str):
@@ -594,11 +621,13 @@ class LocalAgent:
         return result
 
     async def _planning_turn(self, task: str) -> str:
-        logger.info("[Planning] Calling %s for plan...", self._analysis_model)
+        client = self._select_client(self._analysis_model)
+        provider = "cloud" if client is self._cloud_client else "local"
+        logger.info("[Planning] Calling %s (%s) for plan...", self._analysis_model, provider)
         plan_start = time.monotonic()
         try:
             response = await asyncio.wait_for(
-                self._client.chat.completions.create(
+                client.chat.completions.create(
                     model=self._analysis_model,
                     messages=[
                         {
@@ -629,8 +658,11 @@ class LocalAgent:
                 "role": "user",
                 "content": "Synthesize your findings into a final response.",
             })
+            client = self._select_client(self._analysis_model)
+            provider = "cloud" if client is self._cloud_client else "local"
+            logger.info("[Analysis] Calling %s (%s) for synthesis...", self._analysis_model, provider)
             response = await asyncio.wait_for(
-                self._client.chat.completions.create(
+                client.chat.completions.create(
                     model=self._analysis_model,
                     messages=messages_copy,
                 ),

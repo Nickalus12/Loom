@@ -126,19 +126,28 @@ def _get_local_agent() -> LocalAgent:
 @mcp.tool()
 async def craft(
     task: str = Field(description="The engineering task to craft via multi-agent pipeline."),
-    mode: str = Field(default="cloud", description="Execution mode: 'cloud' (LiteLLM proxy) or 'local' (Ollama LocalAgent)."),
+    mode: str = Field(default="cloud", description="Execution mode: 'cloud', 'local' (Ollama only), or 'hybrid' (local tools + cloud analysis)."),
 ) -> str:
     """Craft a solution using Loom's multi-agent pipeline.
     Runs: Architect → Security + Quality (parallel) → Coder → Code Review.
-    Use mode='local' to execute phases with the local Ollama agent (tool-calling, git safety, caching)."""
+    mode='local': All Ollama. mode='hybrid': Local tool-calling + cloud analysis. mode='cloud': All cloud."""
     from loom.telemetry import get_telemetry
     tel = get_telemetry()
     tel.waterfall.begin("craft")
     try:
         effective_mode = mode or os.getenv("LOOM_CRAFT_MODE", "cloud")
-        if effective_mode == "local":
-            agent = _get_local_agent()
-            tel.waterfall.begin("synthesize_agent")
+        if effective_mode in ("local", "hybrid"):
+            from loom.local_agent import LocalAgent
+            memory, _ = _get_engines()
+            engine = _get_local_engine()
+            manager = _get_ps_manager()
+            agent = LocalAgent(
+                inference_engine=engine,
+                ps_manager=manager,
+                memory_engine=memory,
+                hybrid=(effective_mode == "hybrid"),
+            )
+            tel.waterfall.begin("agent_run")
             result = await agent.run(
                 f"You are orchestrating a multi-phase engineering task. "
                 f"First analyze the architecture, then implement, then review your work.\n\nTask: {task}"
@@ -712,14 +721,15 @@ async def local_agent_task(
     max_turns: int = 15,
     tool_model: str = "",
     analysis_model: str = "",
+    hybrid: bool = False,
 ) -> str:
     """Run a local Ollama agent with tool-calling to autonomously accomplish tasks.
     The agent can read, edit, search files, and run PowerShell commands.
     Set max_turns to control depth (5=quick, 15=normal, 30=thorough).
-    Override tool_model/analysis_model for different Ollama models."""
+    Set hybrid=true to use local Ollama for tool-calling + cloud (Azure/Gemini via LiteLLM) for analysis.
+    Override tool_model/analysis_model for different models."""
     try:
-        if tool_model or analysis_model or max_turns != 15:
-            # Create a custom agent with overrides
+        if tool_model or analysis_model or max_turns != 15 or hybrid:
             from loom.local_agent import LocalAgent
             memory, _ = _get_engines()
             engine = _get_local_engine()
@@ -731,6 +741,7 @@ async def local_agent_task(
                 tool_model=tool_model or None,
                 analysis_model=analysis_model or None,
                 max_turns=max_turns,
+                hybrid=hybrid,
             )
         else:
             agent = _get_local_agent()
