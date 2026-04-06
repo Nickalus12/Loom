@@ -7,6 +7,7 @@ import logging
 import os
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, TypedDict
 
 from openai import AsyncOpenAI
@@ -17,6 +18,12 @@ try:
     from loom.telemetry import get_telemetry as _get_telemetry
 except Exception:
     _get_telemetry = None
+
+try:
+    from loom.tracer import ExecutionTracer, EventType
+    _TRACER_AVAILABLE = True
+except Exception:
+    _TRACER_AVAILABLE = False
 
 _DEFAULT_SYSTEM_PROMPT = (
     "You are a local code assistant with access to tools for reading, writing, "
@@ -246,6 +253,21 @@ class LocalAgent:
         self._git_branch_created: bool = False
         self._git_branch_name: str | None = None
         self._telemetry = _get_telemetry() if _get_telemetry is not None else None
+        self.tracer: Any = ExecutionTracer() if _TRACER_AVAILABLE else None
+
+    def _trace(self, event_type: str, name: str, **data: Any) -> int | None:
+        if self.tracer is not None and _TRACER_AVAILABLE:
+            return self.tracer.emit(EventType(event_type), name, **data)
+        return None
+
+    def _trace_begin(self, event_type: str, name: str, **data: Any) -> int | None:
+        if self.tracer is not None and _TRACER_AVAILABLE:
+            return self.tracer.begin(EventType(event_type), name, **data)
+        return None
+
+    def _trace_end(self, idx: int | None = None) -> None:
+        if self.tracer is not None and idx is not None:
+            self.tracer.end(idx)
 
     def _telem_inc(self, name: str, value: float = 1.0, **labels: str) -> None:
         if self._telemetry is not None:
@@ -263,6 +285,9 @@ class LocalAgent:
 
     async def run(self, task: str, system_prompt: str | None = None) -> AgentResult:
         run_start = time.monotonic()
+        if self.tracer is not None:
+            self.tracer.reset()
+        agent_span = self._trace_begin("agent_start", task[:80], model=self._tool_model, max_turns=self._max_turns)
         logger.info("=" * 60)
         logger.info("[Agent] Starting task: %s", task[:100])
         logger.info("[Agent] Tool model: %s | Analysis model: %s | Max turns: %d",
@@ -307,6 +332,7 @@ class LocalAgent:
         for turn in range(self._max_turns):
             turns_used = turn + 1
             turn_start = time.monotonic()
+            turn_span = self._trace_begin("turn_start", f"Turn {turn + 1}", turn=turn + 1)
             logger.info("[Turn %d/%d] Calling %s...", turn + 1, self._max_turns, self._tool_model)
 
             try:
@@ -359,6 +385,7 @@ class LocalAgent:
                 final_response = choice.message.content or ""
                 logger.info("[Turn %d] Final response (%.1fs, ~%d input tokens, ~%d output tokens)",
                              turn + 1, turn_elapsed, token_entry["input_tokens_est"], token_entry["output_tokens_est"])
+                self._trace_end(turn_span)
                 break
 
             assistant_msg["tool_calls"] = [
@@ -391,6 +418,7 @@ class LocalAgent:
 
                 tool_start = time.monotonic()
                 args_preview = {k: (v[:40] + "..." if isinstance(v, str) and len(v) > 40 else v) for k, v in args.items()}
+                tool_span = self._trace_begin("tool_call", tool_name, args=args_preview)
                 logger.info("[Turn %d] Tool %d/%d: %s(%s)", turn + 1, tc_idx + 1, n_calls, tool_name, json.dumps(args_preview, default=str)[:100])
 
                 cache_key = self._cache_key(tool_name, args)
@@ -433,6 +461,9 @@ class LocalAgent:
                 })
 
                 tool_elapsed_ms = int((time.monotonic() - tool_start) * 1000)
+                self._trace_end(tool_span)
+                if was_cached:
+                    self._trace("cache_hit", tool_name)
                 log_entry = {
                     "turn": turn,
                     "tool": tool_name,
@@ -456,6 +487,7 @@ class LocalAgent:
                 )
 
             turn_total = time.monotonic() - turn_start
+            self._trace_end(turn_span)
             logger.info(
                 "[Turn %d] Complete: %d tool calls, %.1fs total",
                 turn + 1,
@@ -483,12 +515,22 @@ class LocalAgent:
         self._telem_inc("agent_tasks_completed")
         self._telem_inc("agent_turns_total", value=float(turns_used))
         self._telem_observe("agent_duration_seconds", elapsed)
+        self._trace_end(agent_span)
         logger.info(
             "Agent run complete: %d turns, %d tool calls, %.1fs elapsed",
             turns_used,
             total_tool_calls,
             elapsed,
         )
+        # Save trace for post-mortem analysis
+        if self.tracer is not None:
+            try:
+                trace_dir = Path("docs/loom/traces")
+                trace_dir.mkdir(parents=True, exist_ok=True)
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+                self.tracer.save(trace_dir / f"trace-{ts}.json")
+            except Exception:
+                logger.debug("Failed to save trace", exc_info=True)
 
         return AgentResult(
             success=True,

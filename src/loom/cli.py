@@ -251,6 +251,41 @@ async def cmd_waterfall(args: argparse.Namespace) -> None:
     print_waterfall(waterfall_data)
 
 
+async def cmd_trace(args: argparse.Namespace) -> None:
+    """Show the latest execution trace."""
+    console.print(_get_banner())
+
+    trace_dir = Path(getattr(args, "trace_dir", "docs/loom") + "/traces")
+    if not trace_dir.exists():
+        console.print("[yellow]No traces found. Run an agent task first.[/]")
+        return
+
+    files = sorted(trace_dir.glob("trace-*.json"), reverse=True)
+    if not files:
+        console.print("[yellow]No trace files found.[/]")
+        return
+
+    import json as _json
+    data = _json.loads(files[0].read_text())
+    events = data.get("events", [])
+
+    console.print(f"[dim]Source: {files[0].name} | {data.get('total_events', 0)} events | {data.get('total_duration_ms', 0)}ms total[/]\n")
+
+    from loom.tracer import ExecutionTracer, TraceEvent, EventType, print_trace
+    tracer = ExecutionTracer()
+    for evt in events:
+        te = TraceEvent(
+            event_type=EventType(evt["type"]),
+            name=evt["name"],
+            timestamp_ms=evt["ts_ms"],
+            duration_ms=evt.get("duration_ms"),
+            data=evt.get("data", {}),
+            parent_idx=evt.get("parent"),
+        )
+        tracer._events.append(te)
+    print_trace(tracer)
+
+
 async def cmd_test(args: argparse.Namespace) -> None:
     """Run the test suite with Rich output."""
     import subprocess
@@ -298,6 +333,10 @@ def main() -> None:
     # tools
     subparsers.add_parser("tools", help="List all MCP tools")
 
+    # trace
+    p_trace = subparsers.add_parser("trace", help="Show latest agent execution trace")
+    p_trace.add_argument("--trace-dir", default="docs/loom", help="Metrics directory")
+
     # waterfall
     p_waterfall = subparsers.add_parser("waterfall", help="Show timing waterfall from latest metrics")
     p_waterfall.add_argument("--metrics-dir", default="docs/loom", help="Metrics state directory")
@@ -322,6 +361,7 @@ def main() -> None:
         "safety": cmd_safety,
         "status": cmd_status,
         "tools": cmd_tools,
+        "trace": cmd_trace,
         "waterfall": cmd_waterfall,
         "test": cmd_test,
     }
