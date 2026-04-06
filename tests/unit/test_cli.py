@@ -33,7 +33,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     # craft
     p_craft = subparsers.add_parser("craft")
     p_craft.add_argument("task", nargs="*")
-    p_craft.add_argument("--mode", choices=["cloud", "local"], default="cloud")
+    p_craft.add_argument("--mode", choices=["auto", "cloud", "local", "hybrid"], default="auto")
     p_craft.add_argument("--tool-model", default="")
     p_craft.add_argument("--analysis-model", default="")
     p_craft.add_argument("--max-turns", type=int, default=15)
@@ -55,6 +55,9 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     # test
     p_test = subparsers.add_parser("test")
     p_test.add_argument("--filter", default="")
+
+    # runtime
+    subparsers.add_parser("runtime")
 
     return parser.parse_args(argv)
 
@@ -95,6 +98,10 @@ class TestSubcommandExistence:
         args = _parse_args(["test"])
         assert args.command == "test"
 
+    def test_runtime_subcommand_exists(self):
+        args = _parse_args(["runtime"])
+        assert args.command == "runtime"
+
 
 # ---------------------------------------------------------------------------
 # Argument acceptance
@@ -130,9 +137,9 @@ class TestArgumentParsing:
         args = _parse_args(["craft", "--mode", "local", "build it"])
         assert args.mode == "local"
 
-    def test_craft_mode_default_is_cloud(self):
+    def test_craft_mode_default_is_auto(self):
         args = _parse_args(["craft", "build it"])
-        assert args.mode == "cloud"
+        assert args.mode == "auto"
 
     def test_safety_accepts_command_args(self):
         """Safety should accept variable PowerShell command args."""

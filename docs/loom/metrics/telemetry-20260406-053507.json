@@ -1,0 +1,111 @@
+{
+  "uptime_seconds": 1064.667,
+  "counters": {
+    "agent_tasks_total": 41.0,
+    "memory_searches": 40.0,
+    "agent_model_calls": 95.0,
+    "model_calls_total": 95.0,
+    "model_tokens_input": 11216.0,
+    "model_tokens_output": 85.0,
+    "agent_tool_calls_total": 32.0,
+    "model_call_errors": 12.0,
+    "agent_tasks_failed": 6.0,
+    "git_branches_created": 9.0,
+    "memory_episodes_stored": 32.0,
+    "agent_tasks_completed": 35.0,
+    "agent_turns_total": 87.0,
+    "agent_tool_calls_cached": 2.0,
+    "agent_tool_calls_retried": 2.0
+  },
+  "labeled_counters": {
+    "agent_model_calls": {
+      "{\"model\": \"qwen3:4b\"}": 39.0,
+      "{\"model\": \"test-tool-model\"}": 55.0,
+      "{\"model\": \"same-model\"}": 1.0
+    },
+    "model_calls_total": {
+      "{\"provider\": \"ollama\"}": 95.0
+    },
+    "model_call_duration_seconds": {
+      "{\"provider\": \"ollama\"}": 89.0
+    },
+    "agent_tool_calls_total": {
+      "{\"tool\": \"find_files\"}": 3.0,
+      "{\"tool\": \"edit_file\"}": 3.0,
+      "{\"tool\": \"read_file\"}": 14.0,
+      "{\"tool\": \"write_file\"}": 6.0,
+      "{\"tool\": \"read_file_lines\"}": 3.0,
+      "{\"tool\": \"run_powershell\"}": 1.0,
+      "{\"tool\": \"search_code\"}": 1.0,
+      "{\"tool\": \"nonexistent_tool\"}": 1.0
+    },
+    "model_call_errors": {
+      "{\"provider\": \"ollama\"}": 12.0
+    }
+  },
+  "durations": {
+    "model_call_duration_seconds": {
+      "count": 89,
+      "min": 0.0,
+      "max": 115.514,
+      "avg": 2.096,
+      "p95": 0.001,
+      "total": 186.519
+    },
+    "agent_duration_seconds": {
+      "count": 41,
+      "min": 0.001,
+      "max": 266.583,
+      "avg": 20.887,
+      "p95": 120.982,
+      "total": 856.373
+    }
+  },
+  "waterfall": [
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    }
+  ],
+  "saved_at": "2026-04-06T05:35:07.611381+00:00"
+}

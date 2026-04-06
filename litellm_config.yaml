@@ -1,17 +1,26 @@
 model_list:
   # ─────────────────────────────────────────────────────────────
-  # HEAVY TIER: Complex reasoning, architecture, coding
-  # Primary: Azure AI Foundry (serverless) → Fallback: Gemini
+  # HEAVY TIER: Complex reasoning — Azure DeepSeek + Grok-4
   # ─────────────────────────────────────────────────────────────
   - model_name: "heavy/default"
     litellm_params:
-      model: "azure/heavy-deployment"
+      model: "azure/DeepSeek-V3.2-Speciale"
       api_key: "os.environ/AZURE_FOUNDRY_KEY"
-      api_base: "os.environ/AZURE_HEAVY_BASE"
+      api_base: "https://lumina-ai-resource.cognitiveservices.azure.com"
     model_info:
-      id: "heavy-azure"
+      id: "heavy-deepseek"
     tpm: 500000
-    rpm: 100
+    rpm: 500
+
+  - model_name: "heavy/default"
+    litellm_params:
+      model: "azure/grok-4-fast-reasoning"
+      api_key: "os.environ/AZURE_FOUNDRY_KEY"
+      api_base: "https://lumina-ai-resource.cognitiveservices.azure.com"
+    model_info:
+      id: "heavy-grok4"
+    tpm: 500000
+    rpm: 500
 
   - model_name: "heavy/default"
     litellm_params:
@@ -23,9 +32,18 @@ model_list:
     rpm: 500
 
   # ─────────────────────────────────────────────────────────────
-  # LIGHT TIER: Utility, docs, audits — faster, cheaper model
-  # Primary: Gemini Flash → Fallback: Ollama local
+  # LIGHT TIER: Utility — Cohere Command A + Gemini + Ollama
   # ─────────────────────────────────────────────────────────────
+  - model_name: "light/default"
+    litellm_params:
+      model: "azure/cohere-command-a"
+      api_key: "os.environ/AZURE_FOUNDRY_KEY"
+      api_base: "https://lumina-ai-resource.cognitiveservices.azure.com"
+    model_info:
+      id: "light-cohere"
+    tpm: 50000
+    rpm: 50
+
   - model_name: "light/default"
     litellm_params:
       model: "gemini/gemini-2.5-flash"
@@ -45,7 +63,18 @@ model_list:
     rpm: 60
 
   # ─────────────────────────────────────────────────────────────
-  # LOCAL TIER: On-device inference via Ollama (no cloud calls)
+  # RERANKING: Cohere Rerank v4 via Azure
+  # ─────────────────────────────────────────────────────────────
+  - model_name: "rerank/default"
+    litellm_params:
+      model: "azure/Cohere-rerank-v4.0-pro"
+      api_key: "os.environ/AZURE_FOUNDRY_KEY"
+      api_base: "https://lumina-ai-resource.cognitiveservices.azure.com"
+    model_info:
+      id: "rerank-cohere"
+
+  # ─────────────────────────────────────────────────────────────
+  # LOCAL TIER: On-device inference via Ollama
   # ─────────────────────────────────────────────────────────────
   - model_name: "local/default"
     litellm_params:
@@ -81,8 +110,8 @@ litellm_settings:
   num_retries: 3
   request_timeout: 120
   fallbacks:
-    - {"heavy/default": ["heavy-gemini-fallback"]}
-    - {"light/default": ["light-ollama-fallback"]}
+    - {"heavy/default": ["heavy-grok4", "heavy-gemini-fallback"]}
+    - {"light/default": ["light-gemini", "light-ollama-fallback"]}
   allowed_fails: 3
   cooldown_time: 30
 

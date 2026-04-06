@@ -1,0 +1,169 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Test",
+      "ts_ms": 0,
+      "duration_ms": 36,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 15
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 1,
+      "duration_ms": 3,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 5,
+      "duration_ms": 1,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 3",
+      "ts_ms": 6,
+      "duration_ms": 1,
+      "data": {
+        "turn": 3
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 4",
+      "ts_ms": 7,
+      "duration_ms": 1,
+      "data": {
+        "turn": 4
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 5",
+      "ts_ms": 8,
+      "duration_ms": 2,
+      "data": {
+        "turn": 5
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 6",
+      "ts_ms": 10,
+      "duration_ms": 1,
+      "data": {
+        "turn": 6
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 7",
+      "ts_ms": 11,
+      "duration_ms": 2,
+      "data": {
+        "turn": 7
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 8",
+      "ts_ms": 13,
+      "duration_ms": 2,
+      "data": {
+        "turn": 8
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 9",
+      "ts_ms": 15,
+      "duration_ms": 2,
+      "data": {
+        "turn": 9
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 10",
+      "ts_ms": 17,
+      "duration_ms": 2,
+      "data": {
+        "turn": 10
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 11",
+      "ts_ms": 19,
+      "duration_ms": 2,
+      "data": {
+        "turn": 11
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 12",
+      "ts_ms": 21,
+      "duration_ms": 2,
+      "data": {
+        "turn": 12
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 13",
+      "ts_ms": 23,
+      "duration_ms": 3,
+      "data": {
+        "turn": 13
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 14",
+      "ts_ms": 26,
+      "duration_ms": 4,
+      "data": {
+        "turn": 14
+      },
+      "parent": 0
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 15",
+      "ts_ms": 30,
+      "duration_ms": 5,
+      "data": {
+        "turn": 15
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 16,
+  "total_duration_ms": 37,
+  "saved_at": "2026-04-06T05:35:02.639801+00:00"
+}

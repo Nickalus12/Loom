@@ -1,0 +1,117 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Do something",
+      "ts_ms": 0,
+      "duration_ms": 345667,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 15
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 668,
+      "duration_ms": 100980,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "find_files",
+      "ts_ms": 87344,
+      "duration_ms": 14304,
+      "data": {
+        "args": {
+          "pattern": "*"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 101648,
+      "duration_ms": 44582,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "run_powershell",
+      "ts_ms": 132822,
+      "duration_ms": 13408,
+      "data": {
+        "args": {
+          "command": "Get-ChildItem -Path ."
+        }
+      },
+      "parent": 3
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 3",
+      "ts_ms": 146230,
+      "duration_ms": 119533,
+      "data": {
+        "turn": 3
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file",
+      "ts_ms": 256992,
+      "duration_ms": 8771,
+      "data": {
+        "args": {
+          "path": "main.py"
+        }
+      },
+      "parent": 5
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 4",
+      "ts_ms": 265763,
+      "duration_ms": 69930,
+      "data": {
+        "turn": 4
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "run_powershell",
+      "ts_ms": 327664,
+      "duration_ms": 8029,
+      "data": {
+        "args": {
+          "command": "python main.py"
+        }
+      },
+      "parent": 7
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 5",
+      "ts_ms": 335693,
+      "duration_ms": 8402,
+      "data": {
+        "turn": 5
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 10,
+  "total_duration_ms": 345668,
+  "saved_at": "2026-04-06T05:36:30.470146+00:00"
+}

@@ -1,0 +1,52 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Write a file at D:/Projects/loom-desktop/test-access.txt with the content \"Loom ",
+      "ts_ms": 0,
+      "duration_ms": 104156,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 5
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 593,
+      "duration_ms": 62610,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "write_file",
+      "ts_ms": 10562,
+      "duration_ms": 52641,
+      "data": {
+        "args": {
+          "content": "Loom agent can write here",
+          "path": "test-access.txt"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 63203,
+      "duration_ms": 16657,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 4,
+  "total_duration_ms": 104156,
+  "saved_at": "2026-04-06T07:18:25.319616+00:00"
+}

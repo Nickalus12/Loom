@@ -1,0 +1,29 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Some task",
+      "ts_ms": 0,
+      "duration_ms": 97,
+      "data": {
+        "model": "test-tool-model",
+        "max_turns": 5
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 29,
+      "duration_ms": 12,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 2,
+  "total_duration_ms": 137,
+  "saved_at": "2026-04-06T05:31:16.936369+00:00"
+}
