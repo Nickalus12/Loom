@@ -1,30 +1,39 @@
-﻿{
+{
   "name": "loom-orchestrator",
   "owner": {
     "name": "Nickalus12"
   },
   "metadata": {
-    "description": "Loom multi-agent orchestration platform for Claude Code",
-    "version": "1.5.0"
+    "description": "Loom multi-agent orchestration platform with Dynamic Agent Fabric for Claude Code",
+    "version": "Silk.1.0"
   },
   "plugins": [
     {
       "name": "loom",
       "source": "./claude",
-      "description": "Multi-agent development orchestration platform â€” 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands",
-      "version": "1.5.0",
+      "description": "Multi-agent orchestration platform with Dynamic Agent Fabric — 36 composable traits, 4 archetypes, local Ollama agents with tool-calling, 3-tier safety pipeline, Nia + Context7 grounding, Graphiti memory, and 49 MCP tools",
+      "version": "Silk.1.0",
       "author": {
-        "name": "Nickalus12"
+        "name": "Nickalus Brewer"
       },
-      "homepage": "https://github.com/Nickalus12/loom-orchestrate",
-      "repository": "https://github.com/Nickalus12/loom-orchestrate",
+      "homepage": "https://github.com/Nickalus12/Loom",
+      "repository": "https://github.com/Nickalus12/Loom",
       "license": "Apache-2.0",
       "keywords": [
         "orchestration",
         "multi-agent",
+        "dynamic-agent-fabric",
+        "traits",
+        "local-inference",
+        "ollama",
+        "tool-calling",
+        "mcp",
+        "safety-pipeline",
+        "knowledge-graph",
         "planning",
         "execution",
-        "agents"
+        "code-review",
+        "security-audit"
       ],
       "category": "productivity"
     }
