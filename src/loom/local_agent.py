@@ -230,7 +230,13 @@ class LocalAgent:
         max_result_chars: int = _DEFAULT_MAX_RESULT_CHARS,
         hybrid: bool = False,
     ) -> None:
-        self._client: AsyncOpenAI = inference_engine._client  # Local Ollama client
+        # Create a DEDICATED Ollama client to avoid connection pool conflicts
+        # with the background worker in LocalInferenceEngine
+        ollama_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        self._client: AsyncOpenAI = AsyncOpenAI(
+            base_url=ollama_base + "/v1",
+            api_key="ollama",
+        )
         self._ps_manager = ps_manager
         self._memory = memory_engine
         self._hybrid = hybrid
