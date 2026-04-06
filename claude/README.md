@@ -1,176 +1,85 @@
-﻿# Loom â€” Claude Code Plugin
+# Loom Plugin for Claude Code
 
-[![Version](https://img.shields.io/badge/version-1.5.0-blue)](https://github.com/Nickalus12/loom-orchestrate/releases)
-[![License](https://img.shields.io/badge/license-Apache-2.0-green)](LICENSE)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-plugin-orange)](https://docs.anthropic.com/en/docs/claude-code)
+[![Silk 1.0](https://img.shields.io/badge/Silk-1.0-C9A96E?style=for-the-badge&labelColor=2D1B0E)](https://github.com/Nickalus12/Loom)
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square)](LICENSE)
 
-Multi-agent development orchestration platform â€” 22 specialists, 4-phase orchestration, native parallel subagents, persistent sessions, and standalone review/debug/security/perf/seo/a11y/compliance commands
+Multi-agent orchestration with Dynamic Agent Fabric, local Ollama agents, 3-tier safety, and knowledge graph memory.
 
-## Installation
-
-### From Marketplace (recommended)
-
-Add the loom marketplace, then install the plugin:
+## Quick Install
 
 ```bash
-claude plugin marketplace add Nickalus12/loom-orchestrate
-claude plugin install loom@loom-orchestrator --scope user
+# Option A: Clone just the plugin directory
+git clone --depth 1 https://github.com/Nickalus12/Loom.git /tmp/loom-temp
+cp -r /tmp/loom-temp/claude ~/.claude/plugins/loom
+rm -rf /tmp/loom-temp
+
+# Launch with Loom
+claude --plugin-dir ~/.claude/plugins/loom
 ```
-
-The marketplace must be configured before installing. See the main [README](../README.md) for marketplace setup details.
-
-### Installation Scopes
-
-| Scope | Flag | Effect |
-|-------|------|--------|
-| User (default) | `--scope user` | Available across all your projects |
-| Project | `--scope project` | Shared with your team via version control |
-| Local | `--scope local` | Project-specific, gitignored |
-
-### Plugin Management
 
 ```bash
-claude plugin update loom          # Pull the latest version
-claude plugin disable loom         # Disable without uninstalling
-claude plugin uninstall loom       # Remove the plugin entirely
+# Option B: Clone full repo and point at it
+git clone https://github.com/Nickalus12/Loom.git ~/loom
+claude --plugin-dir ~/loom/claude
 ```
 
-### Development / Testing
+## Make It Permanent
 
-Load the plugin for a single session without persistent registration:
-
-```bash
-claude --plugin-dir /path/to/loom-orchestrate/claude
-```
-
-Use `/reload-plugins` inside the session to pick up file changes without restarting.
-
-For local development, clone the repo first:
-
-```bash
-git clone https://github.com/Nickalus12/loom-orchestrate
-claude --plugin-dir /path/to/loom-orchestrate/claude
-```
-
-### Verify Installation
-
-After starting Claude Code with the plugin loaded:
-
-- Type `/` and verify `orchestrate`, `review`, `debug`, `security-audit`, `perf-check`, `seo-audit`, `a11y-audit`, and `compliance-check` appear in autocomplete.
-- Run `/agents` and verify agents with the `loom:` prefix appear (e.g., `loom:coder`, `loom:architect`).
-- Confirm MCP tools are registered: `mcp__plugin_loom_loom__*` tools should be available (e.g., `mcp__plugin_loom_loom__get_session_status`).
-
-### MCP Server
-
-The MCP server is auto-registered via `claude/.mcp.json`. If MCP tools are not available, verify the `.mcp.json` file exists at the plugin root:
-
+Add to `~/.claude/settings.json`:
 ```json
 {
-  "mcpServers": {
-    "loom": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/loom-server.js"],
-      "cwd": "${CLAUDE_PLUGIN_ROOT}"
-    }
-  }
+  "plugins": ["~/.claude/plugins/loom"]
 }
 ```
 
-**Note:** Claude Code uses the native `Read` tool for loading skill files and references, not the `get_skill_content` MCP tool (which is Gemini-specific). The orchestrate skill instructs Claude to `Read ${CLAUDE_PLUGIN_ROOT}/references/orchestration-steps.md` directly.
+Then just run `claude` — Loom loads automatically.
 
-## Quick Start
+## Prerequisites
 
-Start a full orchestration by describing what you want to build:
+| Requirement | Install | What It Enables |
+|-------------|---------|----------------|
+| **Python 3.12+** | System | Python MCP server (42 tools) |
+| **pip deps** | `pip install graphiti-core litellm mcp python-dotenv rich` | Full functionality |
+| **Ollama** | [ollama.com](https://ollama.com) | Local agent |
+| **qwen3:4b** | `ollama pull qwen3:4b` | Tool-calling model |
+| **Node.js 18+** | System | Session management MCP |
 
-```
-/orchestrate Build a REST API for a task management system with user authentication
-```
-
-Loom will walk you through the complete lifecycle:
-
-1. **Design Dialogue** -- Structured questions one at a time, 2-3 architectural approaches with trade-offs.
-2. **Design Review** -- Section-by-section approval of the design document.
-3. **Implementation Planning** -- Phase breakdown, agent assignments, dependency graph, parallel execution opportunities.
-4. **Execution Mode Selection** -- Parallel or sequential dispatch.
-5. **Phase-by-Phase Execution** -- Specialized agents implement the plan with session state updates after each phase.
-6. **Quality Gate** -- Final code review blocks on unresolved Critical or Major findings.
-7. **Completion & Archival** -- Summary of files changed, token usage, and next steps.
-
-**Express mode** -- For simple tasks, Loom detects low complexity and uses a streamlined flow: 1-2 questions, brief approval, single agent, code review, done.
+Optional: Neo4j (memory), NIA_API_KEY (codebase grounding), GEMINI_API_KEY (cloud routing)
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/orchestrate` | Full orchestration workflow (design, plan, execute, complete) |
-| `/execute` | Execute an approved implementation plan |
-| `/status` | Display current session status |
-| `/resume` | Resume an interrupted session |
-| `/archive` | Archive the active session |
-| `/review` | Standalone code review |
-| `/debug` | Standalone debugging session |
-| `/security-audit` | Standalone security assessment |
-| `/perf-check` | Standalone performance analysis |
-| `/seo-audit` | Standalone SEO assessment |
-| `/a11y-audit` | Standalone accessibility audit |
-| `/compliance-check` | Standalone compliance review |
+| `/loom:craft` | Multi-agent pipeline (architect + audit + code + review) |
+| `/loom:agent` | Local Ollama agent with tool-calling |
+| `/loom:review` | Code review |
+| `/loom:debug` | Root cause investigation |
+| `/loom:security-audit` | Security scan |
+| `/loom:perf-check` | Performance analysis |
+| `/loom:a11y-audit` | Accessibility audit |
+| `/loom:compliance-check` | Regulatory review |
+| `/loom:status` | Session status |
+| `/loom:resume` | Resume session |
+| `/loom:execute` | Execute plan |
+| `/loom:archive` | Archive session |
 
-These Claude entrypoints come from the public top-level skills in `skills/`. Internal methodology skills remain hidden with `user-invocable: false`.
+## What's Included
 
-## Agents
-
-All agents are registered with a `loom:` namespace prefix. When the orchestrator delegates work, it dispatches agents as `loom:coder`, `loom:architect`, etc. Claude Code agents use **kebab-case** naming (e.g., `code-reviewer`, `api-designer`), contrasting with Gemini CLI's snake_case convention (e.g., `code_reviewer`, `api_designer`). The `loom:` prefix is always required when dispatching.
-
-All agents share a baseline tool set: `Read`, `Glob`, `Grep`, `Skill`. Tool tiers reflect additional capabilities beyond that baseline.
-
-| Agent | Domain | Specialization | Tool Tier |
-|-------|--------|----------------|-----------|
-| architect | Engineering | System design, technology selection | Read-Only |
-| api-designer | Engineering | REST/GraphQL endpoint design | Read-Only |
-| coder | Engineering | Feature implementation, SOLID principles | Full Access |
-| code-reviewer | Engineering | Code quality review, bug detection | Read-Only |
-| data-engineer | Engineering | Schema design, query optimization | Full Access |
-| debugger | Engineering | Root cause analysis, execution tracing | Read + Shell |
-| devops-engineer | Engineering | CI/CD pipelines, containerization | Full Access |
-| performance-engineer | Engineering | Profiling, bottleneck identification | Read + Shell |
-| refactor | Engineering | Code modernization, technical debt | Full Access |
-| security-engineer | Engineering | Vulnerability assessment, OWASP | Read + Shell |
-| tester | Engineering | Unit/integration/E2E tests, TDD | Full Access |
-| technical-writer | Engineering | API docs, READMEs, documentation | Read + Write |
-| product-manager | Product | Requirements gathering, PRDs | Read + Write |
-| ux-designer | Design | User flow design, interaction patterns | Read + Write |
-| design-system-engineer | Design | Design tokens, component APIs | Full Access |
-| content-strategist | Content | Content planning, editorial calendars | Read-Only |
-| copywriter | Content | Persuasive copy, landing pages | Read + Write |
-| seo-specialist | SEO | Technical SEO audits, schema markup | Read + Shell |
-| accessibility-specialist | Compliance | WCAG compliance, ARIA review | Read + Shell |
-| compliance-reviewer | Compliance | GDPR/CCPA auditing, license checks | Read-Only |
-| i18n-specialist | Internationalization | String extraction, locale management | Full Access |
-| analytics-engineer | Analytics | Event tracking, conversion funnels | Full Access |
-
-## Claude Code Specifics
-
-### MCP Tool Names
-
-MCP tools are registered with a namespace prefix. Skills reference bare names like `initialize_workspace` but the actual tool name is `mcp__plugin_loom_loom__initialize_workspace`. The orchestrate skill includes a mapping table that handles this automatically.
-
-### Agent Names
-
-Agents are registered as `loom:<agent-name>` (e.g., `loom:coder`, `loom:code-reviewer`). The orchestrate skill includes a mapping that handles this automatically.
-
-### Hooks
-
-Claude Code hooks are registered in `hooks/claude-hooks.json`:
-
-- **SessionStart** â€” Prune stale sessions, initialize hook state
-- **SessionEnd** â€” Clean up hook state
-- **PreToolUse (Agent matcher)** â€” Track active agent, inject session context
-- **PreToolUse (Bash matcher)** â€” Policy enforcement (blocks destructive commands)
-
-## Configuration
-
-Same environment variables as the Gemini CLI extension. See the main [README](../README.md) for the full configuration table.
+```
+claude/
+  .claude-plugin/plugin.json    Manifest
+  .mcp.json                     3 MCP servers
+  CLAUDE.md                     System context
+  mcp/loom-server.js            Node.js MCP server
+  python/loom/                   Python MCP server (42 tools)
+  skills/ (21)                   Orchestration skills
+  agents/ (22)                   Agent definitions
+  traits/ (36)                   Composable DAF traits
+  hooks/ (6)                     Lifecycle hooks
+  scripts/                       Hook executors
+  lib/                           Shared libraries
+```
 
 ## License
 
-Apache-2.0
+Apache-2.0 | [Nickalus Brewer](https://github.com/Nickalus12)

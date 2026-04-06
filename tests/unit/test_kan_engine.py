@@ -205,7 +205,7 @@ class TestRiskScoring:
         features = kan.extract_features("Get-ChildItem .")
         expected = (
             features[3] * 0.4
-            + features[4] * 0.25
+            + features[4] * 0.35
             + features[5] * 0.35
             + features[7] * 0.45
             + features[8] * 0.4

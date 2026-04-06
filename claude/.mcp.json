@@ -6,18 +6,10 @@
       "cwd": "${CLAUDE_PLUGIN_ROOT}"
     },
     "loom-swarm": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--package",
-        "loom",
-        "python",
-        "-m",
-        "loom.server"
-      ],
-      "cwd": "${CLAUDE_PLUGIN_ROOT}/..",
+      "command": "python",
+      "args": ["-m", "loom.server"],
       "env": {
-        "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/../src"
+        "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/python"
       }
     },
     "context7": {

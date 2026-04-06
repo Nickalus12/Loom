@@ -48,6 +48,10 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     # tools
     subparsers.add_parser("tools")
 
+    # waterfall
+    p_waterfall = subparsers.add_parser("waterfall")
+    p_waterfall.add_argument("--metrics-dir", default="docs/loom")
+
     # test
     p_test = subparsers.add_parser("test")
     p_test.add_argument("--filter", default="")
@@ -82,6 +86,10 @@ class TestSubcommandExistence:
     def test_tools_subcommand_exists(self):
         args = _parse_args(["tools"])
         assert args.command == "tools"
+
+    def test_waterfall_subcommand_exists(self):
+        args = _parse_args(["waterfall"])
+        assert args.command == "waterfall"
 
     def test_test_subcommand_exists(self):
         args = _parse_args(["test"])
@@ -130,6 +138,16 @@ class TestArgumentParsing:
         """Safety should accept variable PowerShell command args."""
         args = _parse_args(["safety", "Get-Process", "Format-Table", "Name"])
         assert args.ps_command == ["Get-Process", "Format-Table", "Name"]
+
+    def test_waterfall_accepts_metrics_dir(self):
+        """Waterfall should accept --metrics-dir flag."""
+        args = _parse_args(["waterfall", "--metrics-dir", "/tmp/metrics"])
+        assert args.metrics_dir == "/tmp/metrics"
+
+    def test_waterfall_metrics_dir_default(self):
+        """Waterfall --metrics-dir should default to docs/loom."""
+        args = _parse_args(["waterfall"])
+        assert args.metrics_dir == "docs/loom"
 
     def test_test_accepts_filter(self):
         args = _parse_args(["test", "--filter", "test_agent"])

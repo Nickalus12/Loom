@@ -1,0 +1,83 @@
+{
+  "uptime_seconds": 156.6,
+  "counters": {
+    "agent_tasks_total": 34.0,
+    "memory_searches": 33.0,
+    "agent_model_calls": 58.0,
+    "model_calls_total": 58.0,
+    "model_tokens_input": 6305.0,
+    "model_tokens_output": 85.0,
+    "agent_tool_calls_total": 30.0,
+    "git_branches_created": 9.0,
+    "memory_episodes_stored": 32.0,
+    "agent_tasks_completed": 33.0,
+    "agent_turns_total": 57.0,
+    "agent_tool_calls_cached": 2.0,
+    "agent_tool_calls_retried": 2.0,
+    "model_call_errors": 2.0,
+    "agent_tasks_failed": 1.0
+  },
+  "labeled_counters": {
+    "agent_model_calls": {
+      "{\"model\": \"test-tool-model\"}": 55.0,
+      "{\"model\": \"qwen3:4b\"}": 2.0,
+      "{\"model\": \"same-model\"}": 1.0
+    },
+    "model_calls_total": {
+      "{\"provider\": \"ollama\"}": 58.0
+    },
+    "model_call_duration_seconds": {
+      "{\"provider\": \"ollama\"}": 57.0
+    },
+    "agent_tool_calls_total": {
+      "{\"tool\": \"edit_file\"}": 3.0,
+      "{\"tool\": \"read_file\"}": 14.0,
+      "{\"tool\": \"write_file\"}": 6.0,
+      "{\"tool\": \"read_file_lines\"}": 3.0,
+      "{\"tool\": \"run_powershell\"}": 1.0,
+      "{\"tool\": \"search_code\"}": 1.0,
+      "{\"tool\": \"find_files\"}": 1.0,
+      "{\"tool\": \"nonexistent_tool\"}": 1.0
+    },
+    "model_call_errors": {
+      "{\"provider\": \"ollama\"}": 2.0
+    }
+  },
+  "durations": {
+    "model_call_duration_seconds": {
+      "count": 57,
+      "min": 0.0,
+      "max": 0.015,
+      "avg": 0.0,
+      "p95": 0.0,
+      "total": 0.015
+    },
+    "agent_duration_seconds": {
+      "count": 34,
+      "min": 0.0,
+      "max": 0.546,
+      "avg": 0.018,
+      "p95": 0.016,
+      "total": 0.607
+    }
+  },
+  "waterfall": [
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [],
+      "duration_ms": 0
+    }
+  ],
+  "saved_at": "2026-04-06T04:09:42.328496+00:00"
+}

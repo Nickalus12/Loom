@@ -1,5 +1,7 @@
 """Unit tests for the Loom MCP server module."""
 
+import json
+
 import pytest
 from pathlib import Path
 from unittest.mock import patch, AsyncMock, MagicMock
@@ -37,13 +39,16 @@ class TestCraftTool:
 
     @pytest.mark.asyncio
     async def test_craft_returns_error_when_not_initialized(self):
-        """Should return an error JSON when _get_engines raises."""
+        """Should return a structured error JSON when _get_engines raises."""
         from loom.server import craft
 
         with patch("loom.server._get_engines", side_effect=ValueError("LITELLM_MASTER_KEY environment variable is missing")):
             result = await craft(task="test", mode="cloud")
             assert isinstance(result, str)
-            assert "failed" in result.lower()
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert "error" in parsed
+            assert parsed["tool"] == "craft"
 
     @pytest.mark.asyncio
     async def test_craft_cloud_success(self):
@@ -63,7 +68,7 @@ class TestCraftTool:
 
     @pytest.mark.asyncio
     async def test_craft_catches_exception(self):
-        """Should catch exceptions and return error JSON instead of raising."""
+        """Should catch exceptions and return structured error JSON instead of raising."""
         from loom.server import craft
 
         mock_engine, mock_orch = _make_mocks()
@@ -72,7 +77,10 @@ class TestCraftTool:
         with patch("loom.server._get_engines", return_value=(mock_engine, mock_orch)):
             result = await craft(task="test", mode="cloud")
             assert isinstance(result, str)
-            assert "failed" in result.lower() or "boom" in result
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert "boom" in parsed["error"]
+            assert parsed["error_type"] == "RuntimeError"
 
 
 class TestGetContextForCoderTool:
@@ -80,13 +88,15 @@ class TestGetContextForCoderTool:
 
     @pytest.mark.asyncio
     async def test_get_context_for_coder_error_when_not_initialized(self):
-        """Should return dict with 'error' key when _get_engines raises."""
+        """Should return dict with structured error fields when _get_engines raises."""
         from loom.server import get_context_for_coder
 
         with patch("loom.server._get_engines", side_effect=ValueError("no env")):
             result = await get_context_for_coder(target_file="test.py")
             assert isinstance(result, dict)
+            assert result["success"] is False
             assert "error" in result
+            assert result["tool"] == "get_context_for_coder"
 
     @pytest.mark.asyncio
     async def test_get_context_for_coder_success(self):
@@ -107,7 +117,7 @@ class TestGetContextForCoderTool:
 
     @pytest.mark.asyncio
     async def test_get_context_for_coder_catches_exception(self):
-        """Should catch exceptions and return dict with 'error' key."""
+        """Should catch exceptions and return dict with structured error fields."""
         from loom.server import get_context_for_coder
 
         mock_engine, _ = _make_mocks()
@@ -116,8 +126,9 @@ class TestGetContextForCoderTool:
         with patch("loom.server._get_engines", return_value=(mock_engine, AsyncMock())):
             result = await get_context_for_coder(target_file="test.py")
             assert isinstance(result, dict)
-            assert "error" in result
+            assert result["success"] is False
             assert "search fail" in result["error"]
+            assert result["error_type"] == "RuntimeError"
 
 
 class TestAddFileNodeTool:
@@ -125,13 +136,15 @@ class TestAddFileNodeTool:
 
     @pytest.mark.asyncio
     async def test_add_file_node_returns_error_when_not_initialized(self):
-        """Should return error string when _get_engines raises."""
+        """Should return structured error JSON when _get_engines raises."""
         from loom.server import add_file_node
 
         with patch("loom.server._get_engines", side_effect=ValueError("no env")):
             result = await add_file_node(file_path="test.py", summary="test")
             assert isinstance(result, str)
-            assert "failed" in result.lower()
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert parsed["tool"] == "add_file_node"
 
     @pytest.mark.asyncio
     async def test_add_file_node_success(self):
@@ -154,13 +167,15 @@ class TestAddBugEdgeTool:
 
     @pytest.mark.asyncio
     async def test_add_bug_edge_returns_error_when_not_initialized(self):
-        """Should return error string when _get_engines raises."""
+        """Should return structured error JSON when _get_engines raises."""
         from loom.server import add_bug_edge
 
         with patch("loom.server._get_engines", side_effect=ValueError("no env")):
             result = await add_bug_edge(source_uuid="a", file_uuid="b", description="bug")
             assert isinstance(result, str)
-            assert "failed" in result.lower()
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert parsed["tool"] == "add_bug_edge"
 
     @pytest.mark.asyncio
     async def test_add_bug_edge_success(self):
@@ -183,13 +198,15 @@ class TestBlackboardTransitionTool:
 
     @pytest.mark.asyncio
     async def test_blackboard_transition_returns_error_when_not_initialized(self):
-        """Should return error string when _get_engines raises."""
+        """Should return structured error JSON when _get_engines raises."""
         from loom.server import blackboard_transition
 
         with patch("loom.server._get_engines", side_effect=ValueError("no env")):
             result = await blackboard_transition(edge_uuids=["a"], agent_name="coder")
             assert isinstance(result, str)
-            assert "failed" in result.lower()
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert parsed["tool"] == "blackboard_transition"
 
     @pytest.mark.asyncio
     async def test_blackboard_transition_success(self):
@@ -206,7 +223,7 @@ class TestBlackboardTransitionTool:
 
     @pytest.mark.asyncio
     async def test_blackboard_transition_catches_exception(self):
-        """Should catch exceptions and return error string."""
+        """Should catch exceptions and return structured error JSON."""
         from loom.server import blackboard_transition
 
         mock_engine, _ = _make_mocks()
@@ -215,4 +232,6 @@ class TestBlackboardTransitionTool:
         with patch("loom.server._get_engines", return_value=(mock_engine, AsyncMock())):
             result = await blackboard_transition(edge_uuids=["bad"], agent_name="coder")
             assert isinstance(result, str)
-            assert "failed" in result.lower() or "not found" in result
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert "not found" in parsed["error"]

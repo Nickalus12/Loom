@@ -40,6 +40,7 @@ class AgentResult(TypedDict):
     git_diff: str | None
     validation_results: list[dict]
     tool_log: list[dict]
+    token_log: list[dict]
     memory_stored: bool
     truncated: bool
 
@@ -251,14 +252,14 @@ class LocalAgent:
             try:
                 self._telemetry.inc(name, value, **labels)
             except Exception:
-                pass
+                logger.debug("Telemetry inc failed for %s", name, exc_info=True)
 
     def _telem_observe(self, name: str, value: float, **labels: str) -> None:
         if self._telemetry is not None:
             try:
                 self._telemetry.observe(name, value, **labels)
             except Exception:
-                pass
+                logger.debug("Telemetry observe failed for %s", name, exc_info=True)
 
     async def run(self, task: str, system_prompt: str | None = None) -> AgentResult:
         run_start = time.monotonic()
@@ -301,6 +302,7 @@ class LocalAgent:
         turns_used = 0
         final_response = ""
         truncated = False
+        token_log: list[dict] = []  # Per-turn token tracking
 
         for turn in range(self._max_turns):
             turns_used = turn + 1
@@ -328,6 +330,7 @@ class LocalAgent:
                     git_diff=None,
                     validation_results=list(self._validation_results),
                     tool_log=list(self._tool_log),
+                    token_log=list(token_log),
                     memory_stored=False,
                     truncated=False,
                 )
@@ -339,10 +342,23 @@ class LocalAgent:
             }
 
             turn_elapsed = time.monotonic() - turn_start
+            # Token delta tracking
+            input_chars = sum(len(m.get("content", "")) for m in messages)
+            output_chars = len(choice.message.content or "")
+            token_entry = {
+                "turn": turn + 1,
+                "input_tokens_est": input_chars // 4,
+                "output_tokens_est": output_chars // 4,
+                "llm_duration_ms": int(turn_elapsed * 1000),
+                "has_tool_calls": bool(choice.message.tool_calls),
+            }
+            token_log.append(token_entry)
+
             if not choice.message.tool_calls:
                 messages.append(assistant_msg)
                 final_response = choice.message.content or ""
-                logger.info("[Turn %d] Final response (%.1fs, no tool calls)", turn + 1, turn_elapsed)
+                logger.info("[Turn %d] Final response (%.1fs, ~%d input tokens, ~%d output tokens)",
+                             turn + 1, turn_elapsed, token_entry["input_tokens_est"], token_entry["output_tokens_est"])
                 break
 
             assistant_msg["tool_calls"] = [
@@ -484,6 +500,7 @@ class LocalAgent:
             git_diff=git_diff,
             validation_results=list(self._validation_results),
             tool_log=list(self._tool_log),
+            token_log=list(token_log),
             memory_stored=memory_stored,
             truncated=truncated,
         )
@@ -519,7 +536,7 @@ class LocalAgent:
             self._telem_inc("model_call_errors", provider="ollama")
             raise
         except Exception:
-            logger.error("[LLM] ERROR after %.1fs from %s", time.monotonic() - call_start, model)
+            logger.error("[LLM] ERROR after %.1fs from %s", time.monotonic() - call_start, model, exc_info=True)
             self._telem_inc("model_call_errors", provider="ollama")
             raise
 
@@ -579,7 +596,7 @@ class LocalAgent:
             )
             return response.choices[0].message.content or ""
         except Exception as exc:
-            logger.debug("Analysis turn failed: %s", exc)
+            logger.warning("Analysis turn failed: %s", exc, exc_info=True)
             return ""
 
     async def _ensure_git_branch(self) -> None:
@@ -606,7 +623,7 @@ class LocalAgent:
             )
             return result.get("output", "")
         except Exception as exc:
-            logger.debug("Git diff failed: %s", exc)
+            logger.warning("Git diff failed: %s", exc, exc_info=True)
             return None
 
     async def _execute_with_retry(

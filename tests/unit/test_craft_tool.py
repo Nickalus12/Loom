@@ -296,7 +296,8 @@ class TestCraftImports:
 
     @pytest.mark.asyncio
     async def test_local_agent_task_returns_error_on_failure(self):
-        """Should catch exceptions and return error string."""
+        """Should catch exceptions and return structured error JSON."""
+        import json
         from loom.server import local_agent_task
 
         mock_agent = AsyncMock()
@@ -305,7 +306,10 @@ class TestCraftImports:
         with patch("loom.server._get_local_agent", return_value=mock_agent):
             result = await local_agent_task(task="Do something")
 
-        assert "failed" in result.lower()
+        parsed = json.loads(result)
+        assert parsed["success"] is False
+        assert parsed["tool"] == "local_agent_task"
+        assert "Model not loaded" in parsed["error"]
 
     @pytest.mark.asyncio
     async def test_local_agent_task_success(self):

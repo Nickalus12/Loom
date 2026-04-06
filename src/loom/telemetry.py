@@ -7,6 +7,7 @@ and statistics are computed lazily on summary request.
 Metrics are persisted as JSON snapshots to docs/loom/metrics/.
 """
 
+import atexit
 import json
 import logging
 import time
@@ -32,6 +33,40 @@ class MetricPoint:
             self.timestamp = datetime.now(timezone.utc).isoformat()
 
 
+class TimingWaterfall:
+    """Tracks nested operation durations for hierarchical timing display."""
+
+    def __init__(self) -> None:
+        self._stack: list[dict] = []
+        self._completed: list[dict] = []
+        self._lock = Lock()
+
+    def begin(self, name: str) -> None:
+        with self._lock:
+            self._stack.append({"name": name, "start": time.monotonic(), "children": []})
+
+    def end(self) -> None:
+        with self._lock:
+            if not self._stack:
+                return
+            entry = self._stack.pop()
+            entry["duration_ms"] = int((time.monotonic() - entry["start"]) * 1000)
+            del entry["start"]
+            if self._stack:
+                self._stack[-1]["children"].append(entry)
+            else:
+                self._completed.append(entry)
+
+    def get_waterfall(self) -> list[dict]:
+        with self._lock:
+            return list(self._completed)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._stack.clear()
+            self._completed.clear()
+
+
 class LoomTelemetry:
     """Lightweight telemetry collector for Loom operations.
 
@@ -50,6 +85,7 @@ class LoomTelemetry:
         self._lock = Lock()
         self._state_dir = Path(state_dir)
         self._start_time = time.monotonic()
+        self.waterfall = TimingWaterfall()
 
     def inc(self, name: str, value: float = 1.0, **labels: str) -> None:
         with self._lock:
@@ -75,7 +111,7 @@ class LoomTelemetry:
     def get_summary(self) -> dict[str, Any]:
         with self._lock:
             summary: dict[str, Any] = {
-                "uptime_seconds": round(time.monotonic() - self._start_time, 1),
+                "uptime_seconds": round(time.monotonic() - self._start_time, 3),
                 "counters": dict(self._counters),
                 "labeled_counters": {},
                 "durations": {},
@@ -101,6 +137,8 @@ class LoomTelemetry:
                     "total": round(sum(sorted_v), 3),
                 }
 
+            summary["waterfall"] = self.waterfall.get_waterfall()
+
             return summary
 
     def save(self) -> Path:
@@ -123,6 +161,7 @@ class LoomTelemetry:
             self._labels.clear()
             self._durations.clear()
             self._start_time = time.monotonic()
+            self.waterfall.reset()
 
 
 class _Timer:
@@ -151,3 +190,15 @@ def get_telemetry(state_dir: str = "docs/loom") -> LoomTelemetry:
     if _telemetry is None:
         _telemetry = LoomTelemetry(state_dir=state_dir)
     return _telemetry
+
+
+def _atexit_save() -> None:
+    """Auto-save telemetry on process exit to preserve crash data."""
+    if _telemetry is not None:
+        try:
+            _telemetry.save()
+        except Exception:
+            pass
+
+
+atexit.register(_atexit_save)

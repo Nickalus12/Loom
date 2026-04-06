@@ -256,7 +256,13 @@ class PowerShellREPLManager:
         timeout: int,
         structured: bool,
     ) -> dict:
+        safety_start = time.monotonic()
+        safety_timing: dict[str, int] = {}
+
+        # --- Tier 1: KAN Neural Scoring ---
+        kan_start = time.monotonic()
         kan_result = await self._kan.score_risk(script)
+        safety_timing["kan_ms"] = int((time.monotonic() - kan_start) * 1000)
 
         # Check elevated review BEFORE KAN blocking — elevated commands bypass
         # the KAN hard-block and route to Gemma for intelligent review instead.
@@ -282,7 +288,10 @@ class PowerShellREPLManager:
             and kan_result.get("model") == "kan"
         )
 
+        # --- Tier 2: Dangerous Command Blocklist ---
+        blocklist_start = time.monotonic()
         dangerous_match = self._check_dangerous_commands(script)
+        safety_timing["blocklist_ms"] = int((time.monotonic() - blocklist_start) * 1000)
         if dangerous_match is not None:
             return {
                 "success": False,
@@ -292,7 +301,11 @@ class PowerShellREPLManager:
         if requires_gemma:
             logger.info("Elevated command '%s' detected — forcing Gemma safety review", elevated_match)
 
-        if not self._check_path_safety(script):
+        # --- Path Safety Check ---
+        path_start = time.monotonic()
+        path_safe = self._check_path_safety(script)
+        safety_timing["path_check_ms"] = int((time.monotonic() - path_start) * 1000)
+        if not path_safe:
             return {
                 "success": False,
                 "error": f"Path safety check failed: script references paths outside project root ({self._allowed_root})",
@@ -311,9 +324,12 @@ class PowerShellREPLManager:
                         "command": script,
                         "safety": {"risk_level": "blocked", "reason": "Elevated command requires unavailable safety review"},
                     }
+            # --- Tier 3: Gemma LLM Safety Review ---
             if self._local_engine is not None and hasattr(self._local_engine, "review_powershell_command"):
+                gemma_start = time.monotonic()
                 try:
                     safety_result = await self._local_engine.review_powershell_command(script)
+                    safety_timing["gemma_review_ms"] = int((time.monotonic() - gemma_start) * 1000)
                     if isinstance(safety_result, dict) and safety_result.get("risk_level") == "blocked":
                         return {
                             "success": False,
@@ -321,6 +337,7 @@ class PowerShellREPLManager:
                             "safety": safety_result,
                         }
                 except Exception as exc:
+                    safety_timing["gemma_review_ms"] = int((time.monotonic() - gemma_start) * 1000)
                     logger.warning("Safety review unavailable — blocking command execution for safety: %s", exc)
                     return {
                         "success": False,
@@ -331,6 +348,12 @@ class PowerShellREPLManager:
                         "command": script,
                         "safety": {"risk_level": "blocked", "reason": "Safety review service unavailable"},
                     }
+
+        safety_timing["total_safety_ms"] = int((time.monotonic() - safety_start) * 1000)
+        logger.info("[Safety] Pipeline: KAN=%dms | Blocklist=%dms | Path=%dms | Gemma=%dms | Total=%dms",
+                     safety_timing.get("kan_ms", 0), safety_timing.get("blocklist_ms", 0),
+                     safety_timing.get("path_check_ms", 0), safety_timing.get("gemma_review_ms", 0),
+                     safety_timing["total_safety_ms"])
 
         start_time = time.monotonic()
 
@@ -391,6 +414,7 @@ class PowerShellREPLManager:
             "errors": stderr_content,
             "session_id": session_id,
             "execution_time_ms": elapsed_ms,
+            "safety_timing": safety_timing,
             "command": script,
         }
 

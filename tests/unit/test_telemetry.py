@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from loom.telemetry import LoomTelemetry, get_telemetry, _Timer
+from loom.telemetry import LoomTelemetry, TimingWaterfall, get_telemetry, _Timer, _atexit_save
 
 
 # ---------------------------------------------------------------------------
@@ -300,3 +300,172 @@ class TestThreadSafety:
 
         expected = num_threads * increments_per_thread
         assert telemetry.get_counter("concurrent_counter") == expected
+
+
+# ---------------------------------------------------------------------------
+# TimingWaterfall tests
+# ---------------------------------------------------------------------------
+
+
+class TestTimingWaterfall:
+    """Verify the TimingWaterfall nested operation tracking."""
+
+    def test_single_operation(self):
+        """A single begin/end should produce one completed entry."""
+        wf = TimingWaterfall()
+        wf.begin("op1")
+        time.sleep(0.01)
+        wf.end()
+        result = wf.get_waterfall()
+        assert len(result) == 1
+        assert result[0]["name"] == "op1"
+        assert result[0]["duration_ms"] >= 0
+        assert result[0]["children"] == []
+
+    def test_nested_operations(self):
+        """Nested begin/end calls should produce a parent with children."""
+        wf = TimingWaterfall()
+        wf.begin("parent")
+        wf.begin("child")
+        wf.end()  # end child
+        wf.end()  # end parent
+        result = wf.get_waterfall()
+        assert len(result) == 1
+        assert result[0]["name"] == "parent"
+        assert len(result[0]["children"]) == 1
+        assert result[0]["children"][0]["name"] == "child"
+
+    def test_multiple_top_level_operations(self):
+        """Multiple sequential top-level operations should produce separate entries."""
+        wf = TimingWaterfall()
+        wf.begin("a")
+        wf.end()
+        wf.begin("b")
+        wf.end()
+        result = wf.get_waterfall()
+        assert len(result) == 2
+        assert result[0]["name"] == "a"
+        assert result[1]["name"] == "b"
+
+    def test_end_with_empty_stack_is_safe(self):
+        """Calling end() with no begin() should not raise."""
+        wf = TimingWaterfall()
+        wf.end()  # should be a no-op
+        assert wf.get_waterfall() == []
+
+    def test_reset_clears_waterfall(self):
+        """reset() should clear both stack and completed entries."""
+        wf = TimingWaterfall()
+        wf.begin("op")
+        wf.end()
+        wf.reset()
+        assert wf.get_waterfall() == []
+
+    def test_duration_ms_is_integer(self):
+        """duration_ms should be an integer (milliseconds)."""
+        wf = TimingWaterfall()
+        wf.begin("op")
+        wf.end()
+        result = wf.get_waterfall()
+        assert isinstance(result[0]["duration_ms"], int)
+
+    def test_start_key_removed_from_completed(self):
+        """The internal 'start' key should be removed from completed entries."""
+        wf = TimingWaterfall()
+        wf.begin("op")
+        wf.end()
+        result = wf.get_waterfall()
+        assert "start" not in result[0]
+
+    def test_deeply_nested_operations(self):
+        """Three levels of nesting should work correctly."""
+        wf = TimingWaterfall()
+        wf.begin("level1")
+        wf.begin("level2")
+        wf.begin("level3")
+        wf.end()  # level3
+        wf.end()  # level2
+        wf.end()  # level1
+        result = wf.get_waterfall()
+        assert len(result) == 1
+        assert result[0]["name"] == "level1"
+        child = result[0]["children"][0]
+        assert child["name"] == "level2"
+        grandchild = child["children"][0]
+        assert grandchild["name"] == "level3"
+        assert grandchild["children"] == []
+
+
+# ---------------------------------------------------------------------------
+# Waterfall integration with LoomTelemetry
+# ---------------------------------------------------------------------------
+
+
+class TestTelemetryWaterfall:
+    """Verify that LoomTelemetry integrates TimingWaterfall correctly."""
+
+    def test_telemetry_has_waterfall(self, telemetry):
+        """LoomTelemetry should have a waterfall attribute."""
+        assert hasattr(telemetry, "waterfall")
+        assert isinstance(telemetry.waterfall, TimingWaterfall)
+
+    def test_summary_includes_waterfall(self, telemetry):
+        """get_summary() should include waterfall data."""
+        telemetry.waterfall.begin("test_op")
+        telemetry.waterfall.end()
+        summary = telemetry.get_summary()
+        assert "waterfall" in summary
+        assert len(summary["waterfall"]) == 1
+        assert summary["waterfall"][0]["name"] == "test_op"
+
+    def test_reset_clears_waterfall(self, telemetry):
+        """reset() should clear the waterfall."""
+        telemetry.waterfall.begin("op")
+        telemetry.waterfall.end()
+        telemetry.reset()
+        summary = telemetry.get_summary()
+        assert summary["waterfall"] == []
+
+    def test_save_includes_waterfall(self, telemetry, tmp_path):
+        """save() should persist waterfall data in the JSON file."""
+        telemetry.waterfall.begin("saved_op")
+        telemetry.waterfall.end()
+        path = telemetry.save()
+        data = json.loads(path.read_text())
+        assert "waterfall" in data
+        assert len(data["waterfall"]) == 1
+        assert data["waterfall"][0]["name"] == "saved_op"
+
+
+# ---------------------------------------------------------------------------
+# Atexit handler
+# ---------------------------------------------------------------------------
+
+
+class TestAtexitSave:
+    """Verify the atexit auto-save handler."""
+
+    def test_atexit_save_calls_save(self, tmp_path):
+        """_atexit_save should call save() on the global telemetry instance."""
+        import loom.telemetry as mod
+        original = mod._telemetry
+        try:
+            mod._telemetry = LoomTelemetry(state_dir=str(tmp_path))
+            mod._telemetry.inc("atexit_test")
+            _atexit_save()
+            # Verify a file was created
+            metrics_dir = tmp_path / "metrics"
+            files = list(metrics_dir.glob("telemetry-*.json"))
+            assert len(files) == 1
+        finally:
+            mod._telemetry = original
+
+    def test_atexit_save_noop_when_no_telemetry(self):
+        """_atexit_save should not crash when _telemetry is None."""
+        import loom.telemetry as mod
+        original = mod._telemetry
+        try:
+            mod._telemetry = None
+            _atexit_save()  # should not raise
+        finally:
+            mod._telemetry = original

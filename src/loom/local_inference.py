@@ -322,7 +322,7 @@ class LocalInferenceEngine:
             available = True
             models_loaded = [m.id for m in response.data]
         except Exception:
-            logger.debug("Ollama status check failed", exc_info=True)
+            logger.warning("Ollama status check failed", exc_info=True)
 
         return {
             "available": available,

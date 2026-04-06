@@ -14,6 +14,31 @@ def _escape_ps(value: str) -> str:
     """Escape a value for safe interpolation inside PowerShell single-quoted strings."""
     return value.replace("'", "''")
 
+
+_RECOVERY_HINTS: dict[str, str] = {
+    "ConnectionRefusedError": "Service is not running. Check Docker (neo4j, litellm) or Ollama.",
+    "FileNotFoundError": "File does not exist. Check the path and try again.",
+    "TimeoutError": "Operation timed out. The service may be overloaded.",
+    "PermissionError": "Permission denied. Check file permissions.",
+    "JSONDecodeError": "Invalid JSON response from service.",
+    "ConnectionError": "Network connection failed. Check that the target service is reachable.",
+    "OSError": "OS-level error. Check disk space, permissions, or network interfaces.",
+    "ValueError": "Invalid input or configuration. Check environment variables and arguments.",
+}
+
+
+def _error_response(tool_name: str, error: Exception, recovery_hint: str = "") -> str:
+    """Standard structured error response for MCP tools."""
+    result = {
+        "success": False,
+        "error": str(error),
+        "error_type": type(error).__name__,
+        "tool": tool_name,
+    }
+    if recovery_hint:
+        result["recovery_hint"] = recovery_hint
+    return json.dumps(result, default=str)
+
 from loom.memory_engine import LoomSwarmMemory
 from loom.orchestrator import LoomOrchestrator
 from loom.agent_registry import AgentRegistry
@@ -106,18 +131,25 @@ async def craft(
     """Craft a solution using Loom's multi-agent pipeline.
     Runs: Architect → Security + Quality (parallel) → Coder → Code Review.
     Use mode='local' to execute phases with the local Ollama agent (tool-calling, git safety, caching)."""
+    from loom.telemetry import get_telemetry
+    tel = get_telemetry()
+    tel.waterfall.begin("craft")
     try:
         effective_mode = mode or os.getenv("LOOM_CRAFT_MODE", "cloud")
         if effective_mode == "local":
             agent = _get_local_agent()
+            tel.waterfall.begin("synthesize_agent")
             result = await agent.run(
                 f"You are orchestrating a multi-phase engineering task. "
                 f"First analyze the architecture, then implement, then review your work.\n\nTask: {task}"
             )
+            tel.waterfall.end()
             return json.dumps(result, default=str)
         else:
             memory, orchestrator = _get_engines()
+            tel.waterfall.begin("synthesize_agent")
             plan = await orchestrator.execute_swarm(task)
+            tel.waterfall.end()
             phases_summary = "; ".join(
                 f"Phase {p.id} ({p.name}): {p.status}" for p in plan.phases
             )
@@ -129,7 +161,9 @@ async def craft(
                 "files_modified": [f for p in plan.phases for f in p.files_modified],
             }, default=str)
     except Exception as e:
-        return json.dumps({"success": False, "error": f"craft failed: {e}"}, default=str)
+        return _error_response("craft", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
+    finally:
+        tel.waterfall.end()
 
 @mcp.tool()
 async def get_context_for_coder(target_file: str = Field(description="The file path to retrieve context and bugs for.")) -> dict:
@@ -141,7 +175,7 @@ async def get_context_for_coder(target_file: str = Field(description="The file p
         memory, _ = _get_engines()
         return await memory.get_context_for_coder(target_file)
     except Exception as e:
-        return {"error": f"get_context_for_coder failed: {e}"}
+        return {"success": False, "error": str(e), "error_type": type(e).__name__, "tool": "get_context_for_coder"}
 
 @mcp.tool()
 async def add_file_node(file_path: str, summary: str) -> str:
@@ -154,7 +188,7 @@ async def add_file_node(file_path: str, summary: str) -> str:
         node = await memory.add_file_node(file_path, summary)
         return f"File node created: {node.uuid}"
     except Exception as e:
-        return f"add_file_node failed: {e}"
+        return _error_response("add_file_node", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def add_bug_edge(source_uuid: str, file_uuid: str, description: str) -> str:
@@ -164,7 +198,7 @@ async def add_bug_edge(source_uuid: str, file_uuid: str, description: str) -> st
         edge = await memory.add_bug_edge(source_uuid, file_uuid, description)
         return f"Bug recorded: {edge.uuid}"
     except Exception as e:
-        return f"add_bug_edge failed: {e}"
+        return _error_response("add_bug_edge", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def blackboard_transition(edge_uuids: list[str], agent_name: str) -> str:
@@ -174,7 +208,7 @@ async def blackboard_transition(edge_uuids: list[str], agent_name: str) -> str:
         await memory.blackboard_transition(edge_uuids, agent_name)
         return "Blackboard state transitioned."
     except Exception as e:
-        return f"blackboard_transition failed: {e}"
+        return _error_response("blackboard_transition", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def list_agents() -> dict:
@@ -193,7 +227,7 @@ async def list_agents() -> dict:
             })
         return {"agents": agents, "count": len(agents)}
     except Exception as e:
-        return {"error": f"list_agents failed: {e}"}
+        return {"success": False, "error": str(e), "error_type": type(e).__name__, "tool": "list_agents"}
 
 @mcp.tool()
 async def execute_plan(
@@ -219,7 +253,7 @@ async def execute_plan(
         summary = "; ".join(f"Phase {p.id} ({p.name}): {p.status}" for p in result.phases)
         return f"Plan completed — {len(result.phases)} phases: {summary}"
     except Exception as e:
-        return f"execute_plan failed: {e}"
+        return _error_response("execute_plan", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def local_brainstorm(task: str, context: str = "") -> str:
@@ -232,7 +266,7 @@ async def local_brainstorm(task: str, context: str = "") -> str:
         engine = _get_local_engine()
         return await engine.brainstorm(task, context)
     except Exception as e:
-        return f"local_brainstorm failed: {e}"
+        return _error_response("local_brainstorm", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def local_review(code: str, file_path: str) -> str:
@@ -247,7 +281,7 @@ async def local_review(code: str, file_path: str) -> str:
         result = await engine.review(code, file_path)
         return str(result)
     except Exception as e:
-        return f"local_review failed: {e}"
+        return _error_response("local_review", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def local_debug(error: str, context: str = "") -> str:
@@ -260,7 +294,7 @@ async def local_debug(error: str, context: str = "") -> str:
         engine = _get_local_engine()
         return await engine.debug_assist(error, context)
     except Exception as e:
-        return f"local_debug failed: {e}"
+        return _error_response("local_debug", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def local_status() -> str:
@@ -273,7 +307,7 @@ async def local_status() -> str:
         result = await engine.get_status()
         return str(result)
     except Exception as e:
-        return f"local_status failed: {e}"
+        return _error_response("local_status", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +328,7 @@ async def execute_powershell(
         result = await manager.execute(script, session_id=session_id, timeout=timeout)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"execute_powershell failed: {e}"
+        return _error_response("execute_powershell", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def define_custom_tool(
@@ -307,7 +341,7 @@ async def define_custom_tool(
         await manager.register_custom_tool(name, script)
         return json.dumps({"success": True, "tool": name, "message": f"Custom tool '{name}' registered"})
     except Exception as e:
-        return f"define_custom_tool failed: {e}"
+        return _error_response("define_custom_tool", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def list_powershell_tools() -> str:
@@ -317,7 +351,7 @@ async def list_powershell_tools() -> str:
         tools = manager.list_custom_tools()
         return json.dumps({"success": True, "tools": tools, "count": len(tools)})
     except Exception as e:
-        return f"list_powershell_tools failed: {e}"
+        return _error_response("list_powershell_tools", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def get_tool_help(cmdlet: str = Field(description="PowerShell cmdlet name to get help for.")) -> str:
@@ -327,7 +361,7 @@ async def get_tool_help(cmdlet: str = Field(description="PowerShell cmdlet name 
         result = await manager.execute(f"Get-Help '{_escape_ps(cmdlet)}' -Full | Out-String", timeout=30)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"get_tool_help failed: {e}"
+        return _error_response("get_tool_help", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def read_file_ps(path: str = Field(description="File path to read.")) -> str:
@@ -337,7 +371,7 @@ async def read_file_ps(path: str = Field(description="File path to read.")) -> s
         result = await manager.execute(f"Read-LoomFile '{_escape_ps(path)}'", timeout=30)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"read_file_ps failed: {e}"
+        return _error_response("read_file_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def write_file_ps(
@@ -351,7 +385,7 @@ async def write_file_ps(
         result = await manager.execute(f"Write-LoomFile '{_escape_ps(path)}' '{escaped}'", timeout=30)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"write_file_ps failed: {e}"
+        return _error_response("write_file_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def search_code_ps(
@@ -365,7 +399,7 @@ async def search_code_ps(
         result = await manager.execute(f"Search-LoomCode '{_escape_ps(query)}' -Path '{_escape_ps(path)}' -Include '{_escape_ps(include)}'", timeout=60)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"search_code_ps failed: {e}"
+        return _error_response("search_code_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def find_files_ps(
@@ -378,7 +412,7 @@ async def find_files_ps(
         result = await manager.execute(f"Find-LoomFiles '{_escape_ps(pattern)}' -Path '{_escape_ps(path)}'", timeout=30)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"find_files_ps failed: {e}"
+        return _error_response("find_files_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_status_ps() -> str:
@@ -388,7 +422,7 @@ async def git_status_ps() -> str:
         result = await manager.execute("Get-LoomGitStatus", timeout=30)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_status_ps failed: {e}"
+        return _error_response("git_status_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_diff_ps(path: str = "", staged: bool = False) -> str:
@@ -403,7 +437,7 @@ async def git_diff_ps(path: str = "", staged: bool = False) -> str:
         result = await manager.execute(cmd, timeout=30)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_diff_ps failed: {e}"
+        return _error_response("git_diff_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_commit_ps(message: str = Field(description="Commit message.")) -> str:
@@ -414,7 +448,7 @@ async def git_commit_ps(message: str = Field(description="Commit message.")) -> 
         result = await manager.execute(f"New-LoomGitCommit '{escaped}'", timeout=30)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_commit_ps failed: {e}"
+        return _error_response("git_commit_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_push_ps() -> str:
@@ -424,7 +458,7 @@ async def git_push_ps() -> str:
         result = await manager.execute("git push 2>&1 | Out-String", timeout=60)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_push_ps failed: {e}"
+        return _error_response("git_push_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_branch_ps() -> str:
@@ -434,7 +468,7 @@ async def git_branch_ps() -> str:
         result = await manager.execute("git branch -a 2>&1 | Out-String", timeout=15)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_branch_ps failed: {e}"
+        return _error_response("git_branch_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_log_ps(limit: int = 20) -> str:
@@ -444,7 +478,7 @@ async def git_log_ps(limit: int = 20) -> str:
         result = await manager.execute(f"Get-LoomGitLog -Limit {limit}", timeout=15)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_log_ps failed: {e}"
+        return _error_response("git_log_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_stash_ps() -> str:
@@ -454,7 +488,7 @@ async def git_stash_ps() -> str:
         result = await manager.execute("Save-LoomGitStash", timeout=15)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_stash_ps failed: {e}"
+        return _error_response("git_stash_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def git_pop_ps() -> str:
@@ -464,7 +498,7 @@ async def git_pop_ps() -> str:
         result = await manager.execute("Restore-LoomGitStash", timeout=15)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"git_pop_ps failed: {e}"
+        return _error_response("git_pop_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def build_project_ps() -> str:
@@ -474,7 +508,7 @@ async def build_project_ps() -> str:
         result = await manager.execute("Invoke-LoomBuild", timeout=300)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"build_project_ps failed: {e}"
+        return _error_response("build_project_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def test_project_ps(filter: str = "") -> str:
@@ -487,7 +521,7 @@ async def test_project_ps(filter: str = "") -> str:
         result = await manager.execute(cmd, timeout=300)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"test_project_ps failed: {e}"
+        return _error_response("test_project_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def run_command_ps(
@@ -503,7 +537,7 @@ async def run_command_ps(
         result = await manager.execute(script, timeout=120)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"run_command_ps failed: {e}"
+        return _error_response("run_command_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def install_psresource_ps(name: str = Field(description="PowerShell module name to install.")) -> str:
@@ -516,7 +550,7 @@ async def install_psresource_ps(name: str = Field(description="PowerShell module
         )
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"install_psresource_ps failed: {e}"
+        return _error_response("install_psresource_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def manage_python_env_ps(
@@ -538,7 +572,7 @@ async def manage_python_env_ps(
         result = await manager.execute(script, timeout=60)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"manage_python_env_ps failed: {e}"
+        return _error_response("manage_python_env_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def analyze_file_ps(path: str = Field(description="File path to analyze with local Gemma.")) -> str:
@@ -555,7 +589,7 @@ async def analyze_file_ps(path: str = Field(description="File path to analyze wi
         result = await engine.review(content, str(path))
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"analyze_file_ps failed: {e}"
+        return _error_response("analyze_file_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def background_insights_ps() -> str:
@@ -565,7 +599,7 @@ async def background_insights_ps() -> str:
         status = await engine.get_status()
         return json.dumps(status, default=str)
     except Exception as e:
-        return f"background_insights_ps failed: {e}"
+        return _error_response("background_insights_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def get_gpu_status_ps() -> str:
@@ -575,7 +609,7 @@ async def get_gpu_status_ps() -> str:
         result = await manager.execute("Get-LoomGpuStatus", timeout=15)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"get_gpu_status_ps failed: {e}"
+        return _error_response("get_gpu_status_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def disk_usage_ps() -> str:
@@ -585,7 +619,7 @@ async def disk_usage_ps() -> str:
         result = await manager.execute("Get-LoomDiskUsage", timeout=15)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"disk_usage_ps failed: {e}"
+        return _error_response("disk_usage_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def memory_usage_ps() -> str:
@@ -595,7 +629,7 @@ async def memory_usage_ps() -> str:
         result = await manager.execute("Get-LoomMemoryUsage", timeout=15)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"memory_usage_ps failed: {e}"
+        return _error_response("memory_usage_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 
 
@@ -613,7 +647,7 @@ async def kan_score_command(command: str = Field(description="PowerShell command
         result = await kan.score_risk(command)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"kan_score_command failed: {e}"
+        return _error_response("kan_score_command", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def kan_train_ps() -> str:
@@ -624,7 +658,7 @@ async def kan_train_ps() -> str:
         result = await kan.retrain()
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"kan_train_ps failed: {e}"
+        return _error_response("kan_train_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def kan_learn_history_ps(limit: int = 200) -> str:
@@ -635,7 +669,7 @@ async def kan_learn_history_ps(limit: int = 200) -> str:
         result = await kan.learn_from_history(limit=limit)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"kan_learn_history_ps failed: {e}"
+        return _error_response("kan_learn_history_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
 async def kan_status_ps() -> str:
@@ -646,7 +680,7 @@ async def kan_status_ps() -> str:
         result = kan.get_status()
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"kan_status_ps failed: {e}"
+        return _error_response("kan_status_ps", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 
 @mcp.tool()
@@ -664,7 +698,7 @@ async def local_agent_task(
         result = await agent.run(task)
         return json.dumps(result, default=str)
     except Exception as e:
-        return f"local_agent_task failed: {e}"
+        return _error_response("local_agent_task", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 
 if __name__ == "__main__":

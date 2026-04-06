@@ -173,6 +173,27 @@ def print_agent_result(result: dict[str, Any]) -> None:
             table.add_row("...", f"({len(tool_log) - 20} more)", "", "", "")
         console.print(table)
 
+    # Token usage per turn
+    token_log = result.get("token_log", [])
+    if token_log:
+        table = Table(title="Token Usage Per Turn", border_style="magenta")
+        table.add_column("Turn", style="cyan", width=5)
+        table.add_column("Input Tokens", style="yellow", justify="right")
+        table.add_column("Output Tokens", style="green", justify="right")
+        table.add_column("LLM Time", justify="right")
+        table.add_column("Tools?", style="dim", width=6)
+        for entry in token_log:
+            duration = entry.get("llm_duration_ms", 0)
+            color = "green" if duration < 1000 else ("yellow" if duration < 5000 else "red")
+            table.add_row(
+                str(entry.get("turn", "")),
+                f"~{entry.get('input_tokens_est', 0):,}",
+                f"~{entry.get('output_tokens_est', 0):,}",
+                f"[{color}]{duration:,}ms[/]",
+                "yes" if entry.get("has_tool_calls") else "",
+            )
+        console.print(table)
+
     console.print()
 
 
@@ -253,6 +274,42 @@ def print_phase_tree(phases: list[dict[str, Any]]) -> None:
             branch.add(f"[green]+[/] {escape(f)}")
         for f in phase.get("files_modified", []):
             branch.add(f"[yellow]~[/] {escape(f)}")
+    console.print(tree)
+
+
+# ---------------------------------------------------------------------------
+# Timing waterfall display
+# ---------------------------------------------------------------------------
+
+
+def print_waterfall(waterfall: list[dict]) -> None:
+    """Render a timing waterfall as an indented tree with color-coded durations.
+
+    Colors: green (<100ms), yellow (100-1000ms), red (>1000ms).
+    """
+    if not waterfall:
+        console.print("[dim]No waterfall data recorded.[/]")
+        return
+
+    tree = Tree("[bold magenta]Timing Waterfall[/]")
+
+    def _add_entries(parent: Tree, entries: list[dict]) -> None:
+        for entry in entries:
+            name = entry.get("name", "?")
+            duration_ms = entry.get("duration_ms", 0)
+            if duration_ms < 100:
+                color = "green"
+            elif duration_ms <= 1000:
+                color = "yellow"
+            else:
+                color = "red"
+            label = f"[bold]{escape(name)}[/] [{color}]{duration_ms}ms[/]"
+            branch = parent.add(label)
+            children = entry.get("children", [])
+            if children:
+                _add_entries(branch, children)
+
+    _add_entries(tree, waterfall)
     console.print(tree)
 
 

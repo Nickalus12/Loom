@@ -19,6 +19,7 @@ from loom.display import (
     print_agent_result,
     print_craft_result,
     print_safety_result,
+    print_waterfall,
     setup_rich_logging,
 )
 
@@ -228,6 +229,28 @@ async def cmd_tools(args: argparse.Namespace) -> None:
     console.print(f"\n[dim]{len(tools)} tools available[/]")
 
 
+async def cmd_waterfall(args: argparse.Namespace) -> None:
+    """Display the timing waterfall from the latest telemetry snapshot."""
+    console.print(_get_banner())
+
+    metrics_dir = Path(args.metrics_dir) / "metrics"
+    if not metrics_dir.exists():
+        console.print("[red]No metrics directory found.[/]")
+        sys.exit(1)
+
+    files = sorted(metrics_dir.glob("telemetry-*.json"), reverse=True)
+    if not files:
+        console.print("[red]No telemetry snapshots found.[/]")
+        sys.exit(1)
+
+    import json as _json
+    data = _json.loads(files[0].read_text())
+    waterfall_data = data.get("waterfall", [])
+
+    console.print(f"[dim]Source: {files[0].name}[/]\n")
+    print_waterfall(waterfall_data)
+
+
 async def cmd_test(args: argparse.Namespace) -> None:
     """Run the test suite with Rich output."""
     import subprocess
@@ -275,6 +298,10 @@ def main() -> None:
     # tools
     subparsers.add_parser("tools", help="List all MCP tools")
 
+    # waterfall
+    p_waterfall = subparsers.add_parser("waterfall", help="Show timing waterfall from latest metrics")
+    p_waterfall.add_argument("--metrics-dir", default="docs/loom", help="Metrics state directory")
+
     # test
     p_test = subparsers.add_parser("test", help="Run the test suite")
     p_test.add_argument("--filter", default="", help="Test filter pattern")
@@ -295,6 +322,7 @@ def main() -> None:
         "safety": cmd_safety,
         "status": cmd_status,
         "tools": cmd_tools,
+        "waterfall": cmd_waterfall,
         "test": cmd_test,
     }
 

@@ -2,15 +2,17 @@
 
 These tests verify the API contract that each MCP tool function adheres to:
 - Return type correctness (str vs dict)
-- Error shape consistency
+- Structured error response consistency (success, error, error_type, tool keys)
 - Key presence in dict returns
 """
+
+import json
 
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 
 from loom.server import (
-    orchestrate_swarm,
+    craft,
     get_context_for_coder,
     add_file_node,
     add_bug_edge,
@@ -54,41 +56,48 @@ def _mock_orchestrator():
 
 
 # ---------------------------------------------------------------------------
-# orchestrate_swarm contracts
+# craft contracts
 # ---------------------------------------------------------------------------
 
 
-class TestOrchestrateSwarmContract:
-    """Contract: orchestrate_swarm always returns str."""
+class TestCraftContract:
+    """Contract: craft always returns str with structured JSON."""
 
     @pytest.mark.asyncio
-    async def test_orchestrate_swarm_returns_str(self):
+    async def test_craft_returns_str(self):
         """Should return a string on successful execution."""
         engine = _mock_engine_with_context()
         orch = _mock_orchestrator()
 
         with patch("loom.server._get_engines", return_value=(engine, orch)):
-            result = await orchestrate_swarm(task="build feature X")
+            result = await craft(task="build feature X", mode="cloud")
             assert isinstance(result, str), f"Expected str, got {type(result)}"
 
     @pytest.mark.asyncio
-    async def test_orchestrate_swarm_error_returns_str(self):
-        """Should return a string containing error info when engines unavailable."""
+    async def test_craft_error_returns_structured_json(self):
+        """Should return structured error JSON when engines unavailable."""
         with patch("loom.server._get_engines", side_effect=ValueError("missing vars")):
-            result = await orchestrate_swarm(task="build feature X")
+            result = await craft(task="build feature X", mode="cloud")
             assert isinstance(result, str), f"Expected str, got {type(result)}"
-            assert "missing vars" in result or "failed" in result.lower()
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert "missing vars" in parsed["error"]
+            assert parsed["tool"] == "craft"
+            assert "error_type" in parsed
 
     @pytest.mark.asyncio
-    async def test_orchestrate_swarm_exception_returns_str(self):
-        """Should return a string when an exception occurs during execution."""
+    async def test_craft_exception_returns_structured_json(self):
+        """Should return structured error JSON when an exception occurs."""
         engine = _mock_engine_with_context()
         orch = AsyncMock()
         orch.execute_swarm = AsyncMock(side_effect=RuntimeError("db down"))
 
         with patch("loom.server._get_engines", return_value=(engine, orch)):
-            result = await orchestrate_swarm(task="build feature X")
+            result = await craft(task="build feature X", mode="cloud")
             assert isinstance(result, str), f"Expected str, got {type(result)}"
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert parsed["error_type"] == "RuntimeError"
 
 
 # ---------------------------------------------------------------------------
@@ -112,24 +121,27 @@ class TestGetContextForCoderContract:
             assert "raw_edges" in result
 
     @pytest.mark.asyncio
-    async def test_get_context_for_coder_error_returns_dict(self):
-        """Should return a dict with 'error' key when engines unavailable."""
+    async def test_get_context_for_coder_error_returns_structured_dict(self):
+        """Should return a dict with structured error fields when engines unavailable."""
         with patch("loom.server._get_engines", side_effect=ValueError("no config")):
             result = await get_context_for_coder(target_file="main.py")
             assert isinstance(result, dict), f"Expected dict, got {type(result)}"
-            assert "error" in result
+            assert result["success"] is False
             assert isinstance(result["error"], str)
+            assert result["tool"] == "get_context_for_coder"
+            assert "error_type" in result
 
     @pytest.mark.asyncio
-    async def test_get_context_for_coder_exception_returns_dict(self):
-        """Should return a dict with 'error' key when an exception occurs."""
+    async def test_get_context_for_coder_exception_returns_structured_dict(self):
+        """Should return a dict with structured error fields when an exception occurs."""
         engine = AsyncMock()
         engine.get_context_for_coder = AsyncMock(side_effect=RuntimeError("graph error"))
 
         with patch("loom.server._get_engines", return_value=(engine, _mock_orchestrator())):
             result = await get_context_for_coder(target_file="main.py")
             assert isinstance(result, dict), f"Expected dict, got {type(result)}"
-            assert "error" in result
+            assert result["success"] is False
+            assert result["error_type"] == "RuntimeError"
 
 
 # ---------------------------------------------------------------------------
@@ -151,11 +163,14 @@ class TestAddFileNodeContract:
             assert "node-uuid-001" in result
 
     @pytest.mark.asyncio
-    async def test_add_file_node_error_returns_str(self):
-        """Should return a string with error info when engines unavailable."""
+    async def test_add_file_node_error_returns_structured_json(self):
+        """Should return structured error JSON when engines unavailable."""
         with patch("loom.server._get_engines", side_effect=ValueError("no config")):
             result = await add_file_node(file_path="test.py", summary="Test file")
             assert isinstance(result, str), f"Expected str, got {type(result)}"
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert parsed["tool"] == "add_file_node"
 
 
 # ---------------------------------------------------------------------------
@@ -177,11 +192,14 @@ class TestAddBugEdgeContract:
             assert "edge-uuid-002" in result
 
     @pytest.mark.asyncio
-    async def test_add_bug_edge_error_returns_str(self):
-        """Should return a string with error info when engines unavailable."""
+    async def test_add_bug_edge_error_returns_structured_json(self):
+        """Should return structured error JSON when engines unavailable."""
         with patch("loom.server._get_engines", side_effect=ValueError("no config")):
             result = await add_bug_edge(source_uuid="s1", file_uuid="f1", description="Bug A")
             assert isinstance(result, str), f"Expected str, got {type(result)}"
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert parsed["tool"] == "add_bug_edge"
 
 
 # ---------------------------------------------------------------------------
@@ -202,18 +220,24 @@ class TestBlackboardTransitionContract:
             assert isinstance(result, str), f"Expected str, got {type(result)}"
 
     @pytest.mark.asyncio
-    async def test_blackboard_transition_error_returns_str(self):
-        """Should return a string with error info when engines unavailable."""
+    async def test_blackboard_transition_error_returns_structured_json(self):
+        """Should return structured error JSON when engines unavailable."""
         with patch("loom.server._get_engines", side_effect=ValueError("no config")):
             result = await blackboard_transition(edge_uuids=["e1"], agent_name="coder")
             assert isinstance(result, str), f"Expected str, got {type(result)}"
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert parsed["tool"] == "blackboard_transition"
 
     @pytest.mark.asyncio
-    async def test_blackboard_transition_exception_returns_str(self):
-        """Should return a string when blackboard_transition raises."""
+    async def test_blackboard_transition_exception_returns_structured_json(self):
+        """Should return structured error JSON when blackboard_transition raises."""
         engine = AsyncMock()
         engine.blackboard_transition = AsyncMock(side_effect=ValueError("uuid not found"))
 
         with patch("loom.server._get_engines", return_value=(engine, _mock_orchestrator())):
             result = await blackboard_transition(edge_uuids=["bad"], agent_name="coder")
             assert isinstance(result, str), f"Expected str, got {type(result)}"
+            parsed = json.loads(result)
+            assert parsed["success"] is False
+            assert "uuid not found" in parsed["error"]

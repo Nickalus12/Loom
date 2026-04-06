@@ -148,7 +148,7 @@ class PowerShellKANEngine:
         else:
             risk_score = (
                 features[3] * 0.4     # invoke-expression: high risk
-                + features[4] * 0.25  # deletion commands
+                + features[4] * 0.35  # deletion commands
                 + features[5] * 0.35  # recursive + force
                 + features[7] * 0.45  # network operations: exfiltration risk
                 + features[8] * 0.4   # registry operations: system tampering

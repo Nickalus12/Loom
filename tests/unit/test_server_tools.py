@@ -359,33 +359,41 @@ class TestServerToolErrorHandling:
 
     @pytest.mark.asyncio
     async def test_execute_powershell_catches_exception(self):
-        """Should return error string when _get_ps_manager raises."""
+        """Should return structured error JSON when _get_ps_manager raises."""
         from loom.server import execute_powershell
 
         with patch("loom.server._get_ps_manager", side_effect=RuntimeError("No pwsh")):
             result = await execute_powershell(script="Get-Process")
 
-        assert "failed" in result.lower()
+        parsed = json.loads(result)
+        assert parsed["success"] is False
+        assert parsed["tool"] == "execute_powershell"
+        assert "No pwsh" in parsed["error"]
 
     @pytest.mark.asyncio
     async def test_read_file_ps_catches_exception(self):
-        """Should return error string when _get_ps_manager raises."""
+        """Should return structured error JSON when _get_ps_manager raises."""
         from loom.server import read_file_ps
 
         with patch("loom.server._get_ps_manager", side_effect=RuntimeError("No pwsh")):
             result = await read_file_ps(path="test.py")
 
-        assert "failed" in result.lower()
+        parsed = json.loads(result)
+        assert parsed["success"] is False
+        assert parsed["tool"] == "read_file_ps"
 
     @pytest.mark.asyncio
     async def test_kan_score_command_catches_exception(self):
-        """Should return error string when _get_kan_engine raises."""
+        """Should return structured error JSON when _get_kan_engine raises."""
         from loom.server import kan_score_command
 
         with patch("loom.server._get_kan_engine", side_effect=ValueError("init error")):
             result = await kan_score_command(command="Get-Process")
 
-        assert "failed" in result.lower()
+        parsed = json.loads(result)
+        assert parsed["success"] is False
+        assert parsed["tool"] == "kan_score_command"
+        assert "init error" in parsed["error"]
 
     @pytest.mark.asyncio
     async def test_define_custom_tool_returns_json(self):
@@ -429,13 +437,16 @@ class TestServerToolErrorHandling:
 
     @pytest.mark.asyncio
     async def test_local_brainstorm_catches_exception(self):
-        """Should return error string when local engine fails."""
+        """Should return structured error JSON when local engine fails."""
         from loom.server import local_brainstorm
 
         with patch("loom.server._get_local_engine", side_effect=RuntimeError("no Ollama")):
             result = await local_brainstorm(task="test")
 
-        assert "failed" in result.lower()
+        parsed = json.loads(result)
+        assert parsed["success"] is False
+        assert parsed["tool"] == "local_brainstorm"
+        assert "no Ollama" in parsed["error"]
 
     @pytest.mark.asyncio
     async def test_local_review_returns_result(self):
