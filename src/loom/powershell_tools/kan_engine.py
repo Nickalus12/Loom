@@ -28,9 +28,29 @@ _NETWORK_CMDLETS: frozenset[str] = frozenset({
 })
 
 _SAFE_INDICATORS: frozenset[str] = frozenset({
+    # Exploration / read-only
     "-whatif", "-confirm", "get-help", "get-command", "get-member",
     "get-childitem", "get-content", "get-date", "get-process",
+    "get-item", "get-location", "get-service", "test-path",
+    "test-connection", "measure-object", "select-string",
+    # Output / formatting (read-only transforms)
     "write-host", "write-output", "write-verbose",
+    "select-object", "where-object", "sort-object",
+    "format-table", "format-list", "format-wide",
+    "convertto-json", "convertto-csv", "convertto-xml",
+    "out-string", "out-null",
+    # Loom-specific safe patterns
+    "read-loomfile", "find-loomfiles", "search-loomcode",
+    "get-loomgitstatus", "get-loomgitlog", "get-loomgitdiff",
+    "get-loomgpustatus", "get-loomdiskusage", "get-loommemoryusage",
+})
+
+_SAFE_PIPELINE_TERMINATORS: frozenset[str] = frozenset({
+    "select-object", "where-object", "sort-object",
+    "format-table", "format-list", "format-wide",
+    "measure-object", "convertto-json", "convertto-csv",
+    "out-string", "out-null", "out-file",
+    "select-string", "group-object", "tee-object",
 })
 
 NUM_FEATURES: int = 16
@@ -116,22 +136,39 @@ class PowerShellKANEngine:
     def extract_features(self, command: str) -> list[float]:
         lower = command.lower()
 
+        # Smart detection: -WhatIf makes any command a dry run (safe)
+        has_whatif = "-whatif" in lower
+
+        # Smart deletion: only flag actual cmdlet-based deletion, not variable names
+        has_real_deletion = bool(re.search(r"(?:^|\||\;)\s*(?:remove-item|ri|del|rm)\s", lower))
+
+        # Pipeline safety: if the last command in a pipeline is a safe terminator,
+        # the whole pipeline is read-only (e.g., Get-Process | Select-Object Name)
+        pipeline_is_safe = False
+        if "|" in command:
+            last_segment = command.split("|")[-1].strip().lower()
+            pipeline_is_safe = any(t in last_segment for t in _SAFE_PIPELINE_TERMINATORS)
+
+        # Count safe indicators (weighted by count, not binary)
+        safe_count = sum(1 for s in _SAFE_INDICATORS if s in lower)
+        safe_score = min(safe_count / 3.0, 1.0)  # 3+ safe indicators = max safety
+
         features: list[float] = [
             min(len(command) / 500.0, 1.0),
             min(command.count("|") / 5.0, 1.0),
             min(command.count(";") / 5.0, 1.0),
-            float(bool(re.search(r"invoke-expression|iex\s", lower))),
-            float(bool(re.search(r"remove-item|ri\s|del\s|rm\s", lower))),
-            float("-recurse" in lower and "-force" in lower),
+            float(bool(re.search(r"invoke-expression|iex\s", lower))) if not has_whatif else 0.0,
+            float(has_real_deletion) if not has_whatif else 0.0,
+            float("-recurse" in lower and "-force" in lower) if not has_whatif else 0.0,
             float(bool(re.search(r"[a-zA-Z]:\\|/usr|/etc|/home|\$env:", command))),
-            float(any(c in lower for c in _NETWORK_CMDLETS)),
-            float(bool(re.search(r"registry|hklm:|hkcu:|set-itemproperty", lower))),
-            float(bool(re.search(r"start-process|stop-process|get-process.*stop|stop-service|set-service|new-service|new-netfirewallrule|disable-netadapter", lower))),
+            float(any(c in lower for c in _NETWORK_CMDLETS)) if not has_whatif else 0.0,
+            float(bool(re.search(r"registry|hklm:|hkcu:|set-itemproperty", lower))) if not has_whatif else 0.0,
+            float(bool(re.search(r"start-process|stop-process|get-process.*stop|stop-service|set-service|new-service|new-netfirewallrule|disable-netadapter", lower))) if not has_whatif else 0.0,
             min(command.count("$") / 10.0, 1.0),
             float('"' in command and "$" in command),
             min(len(re.findall(r"[A-Z][a-z]+-[A-Z][a-z]+", command)) / 5.0, 1.0),
             float(bool(re.search(r"2>&1|2>\s*\$", command))),
-            float(any(s in lower for s in _SAFE_INDICATORS)),
+            safe_score + (0.3 if pipeline_is_safe else 0.0) + (0.5 if has_whatif else 0.0),
             min((command.count("{") + command.count("(")) / 10.0, 1.0),
         ]
 
