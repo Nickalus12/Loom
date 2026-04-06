@@ -246,10 +246,11 @@ class LocalAgent:
                 or os.getenv("LOOM_HEAVY_MODEL", "")
                 or "heavy/default"
             )
-            litellm_key = os.getenv("LITELLM_MASTER_KEY", "")
+            litellm_key = os.getenv("LITELLM_MASTER_KEY", "sk-loom-internal-master")
             litellm_base = os.getenv("LITELLM_BASE_URL", "http://localhost:4000/v1")
+            logger.info("[Hybrid] Creating cloud client: base=%s key=%s...", litellm_base, litellm_key[:12] if litellm_key else "NONE")
             self._cloud_client: AsyncOpenAI | None = AsyncOpenAI(
-                base_url=litellm_base, api_key=litellm_key or "sk-loom"
+                base_url=litellm_base, api_key=litellm_key,
             )
             logger.info("[Hybrid] Tool model: %s (local) | Analysis model: %s (cloud via %s)",
                          self._tool_model, self._analysis_model, litellm_base)
@@ -358,10 +359,10 @@ class LocalAgent:
                     self._tool_model, messages, tools=self._AGENT_TOOLS
                 )
             except Exception as exc:
-                logger.error("[Turn %d] LLM FAILED after %.1fs: %s", turn + 1, time.monotonic() - turn_start, exc)
+                logger.error("[Turn %d] LLM FAILED after %.1fs: %s: %s", turn + 1, time.monotonic() - turn_start, type(exc).__name__, exc, exc_info=True)
                 self._telem_inc("agent_tasks_failed")
                 self._telem_inc("model_call_errors", provider="ollama")
-                final_response = f"LLM call failed on turn {turn}: {exc}"
+                final_response = f"LLM call failed on turn {turn} ({type(exc).__name__}): {exc}"
                 elapsed = time.monotonic() - run_start
                 self._telem_observe("agent_duration_seconds", elapsed)
                 return AgentResult(
