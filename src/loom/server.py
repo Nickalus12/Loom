@@ -256,26 +256,38 @@ async def execute_plan(
         return _error_response("execute_plan", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
-async def local_brainstorm(task: str, context: str = "") -> str:
-    """
-    Generate creative approaches and ideas using a fast local Gemma 4 E2B model.
-    Use this for quick brainstorming, ideation, and exploring alternative approaches
-    before committing to a strategy. Runs locally on GPU for near-instant response.
-    """
+async def local_brainstorm(
+    task: str = Field(description="What to brainstorm about."),
+    context: str = Field(default="", description="Additional context to inform the brainstorm."),
+    depth: str = Field(default="normal", description="Brainstorm depth: 'quick' (1 pass), 'normal' (1 pass with detailed prompt), 'deep' (3 iterative passes that build on each other)."),
+) -> str:
+    """Generate creative approaches and ideas using local Ollama models.
+    Use depth='deep' for thorough multi-pass brainstorming that iterates on its own ideas."""
     try:
         engine = _get_local_engine()
-        return await engine.brainstorm(task, context)
+        if depth == "deep":
+            # Multi-pass: 3 rounds where each builds on the last
+            results = []
+            current_context = context
+            for i in range(3):
+                round_task = task if i == 0 else f"Build on and refine these previous ideas, go deeper, find non-obvious angles:\n\n{results[-1]}\n\nOriginal task: {task}"
+                result = await engine.brainstorm(round_task, current_context)
+                results.append(result)
+                current_context = result
+            return f"## Brainstorm (3 deep passes)\n\n### Pass 1 — Initial Ideas\n{results[0]}\n\n### Pass 2 — Refined\n{results[1]}\n\n### Pass 3 — Final Deep Dive\n{results[2]}"
+        else:
+            return await engine.brainstorm(task, context)
     except Exception as e:
         return _error_response("local_brainstorm", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
-async def local_review(code: str, file_path: str) -> str:
-    """
-    Quick code review using a fast local Gemma 4 E2B model.
-    Analyzes code for bugs, anti-patterns, security issues, and style problems.
-    Returns findings with confidence ratings. Use for fast pre-review before
-    detailed cloud-based analysis.
-    """
+async def local_review(
+    code: str = Field(description="Code to review."),
+    file_path: str = Field(description="File path for context."),
+    focus: str = Field(default="all", description="Review focus: 'all', 'security', 'bugs', 'performance', 'style'."),
+) -> str:
+    """Code review using local Ollama model. Analyzes for bugs, anti-patterns,
+    security issues, and style. Use focus to narrow the review scope."""
     try:
         engine = _get_local_engine()
         result = await engine.review(code, file_path)
@@ -284,15 +296,26 @@ async def local_review(code: str, file_path: str) -> str:
         return _error_response("local_review", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 @mcp.tool()
-async def local_debug(error: str, context: str = "") -> str:
-    """
-    Analyze errors and stack traces using a fast local Gemma 4 E2B model.
-    Provides quick diagnostic suggestions and probable root causes.
-    Runs locally for near-instant debugging assistance.
-    """
+async def local_debug(
+    error: str = Field(description="Error message or stack trace to analyze."),
+    context: str = Field(default="", description="Additional context (relevant code, what you were doing)."),
+    depth: str = Field(default="normal", description="Analysis depth: 'quick' (fast diagnosis), 'normal', 'deep' (3-pass iterative analysis)."),
+) -> str:
+    """Analyze errors using local Ollama model. Use depth='deep' for thorough
+    multi-pass root cause analysis that considers multiple hypotheses."""
     try:
         engine = _get_local_engine()
-        return await engine.debug_assist(error, context)
+        if depth == "deep":
+            results = []
+            current_ctx = context
+            for i in range(3):
+                round_error = error if i == 0 else f"Previous analysis:\n{results[-1]}\n\nDig deeper. What did the previous analysis miss? Consider edge cases, race conditions, and upstream causes.\n\nOriginal error: {error}"
+                result = await engine.debug_assist(round_error, current_ctx)
+                results.append(result)
+                current_ctx = result
+            return f"## Debug Analysis (3 deep passes)\n\n### Pass 1 — Initial Diagnosis\n{results[0]}\n\n### Pass 2 — Deeper Investigation\n{results[1]}\n\n### Pass 3 — Root Cause\n{results[2]}"
+        else:
+            return await engine.debug_assist(error, context)
     except Exception as e:
         return _error_response("local_debug", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
@@ -685,16 +708,32 @@ async def kan_status_ps() -> str:
 
 @mcp.tool()
 async def local_agent_task(
-    task: str = Field(description="Natural language task for the local Ollama agent (e.g., 'Review src/loom/server.py for bugs' or 'Add error handling to the parse function in utils.py')."),
+    task: str = Field(description="Natural language task for the local Ollama agent."),
+    max_turns: int = 15,
+    tool_model: str = "",
+    analysis_model: str = "",
 ) -> str:
-    """Run a local Ollama agent that can read, edit, search files, and execute
-    PowerShell commands to accomplish a task. The agent uses tool calling to
-    autonomously work through multi-step tasks like code reviews, bug fixes,
-    and file updates. Features: dual-model routing, git safety branching,
-    result caching, retry on failure, syntax validation, and Graphiti session memory.
-    Configure models via LOOM_AGENT_TOOL_MODEL and LOOM_AGENT_ANALYSIS_MODEL env vars."""
+    """Run a local Ollama agent with tool-calling to autonomously accomplish tasks.
+    The agent can read, edit, search files, and run PowerShell commands.
+    Set max_turns to control depth (5=quick, 15=normal, 30=thorough).
+    Override tool_model/analysis_model for different Ollama models."""
     try:
-        agent = _get_local_agent()
+        if tool_model or analysis_model or max_turns != 15:
+            # Create a custom agent with overrides
+            from loom.local_agent import LocalAgent
+            memory, _ = _get_engines()
+            engine = _get_local_engine()
+            manager = _get_ps_manager()
+            agent = LocalAgent(
+                inference_engine=engine,
+                ps_manager=manager,
+                memory_engine=memory,
+                tool_model=tool_model or None,
+                analysis_model=analysis_model or None,
+                max_turns=max_turns,
+            )
+        else:
+            agent = _get_local_agent()
         result = await agent.run(task)
         return json.dumps(result, default=str)
     except Exception as e:
