@@ -12,8 +12,8 @@
 
 **Local-first AI agents with tool-calling, 3-tier safety, and knowledge graph memory**
 
-[![Version](https://img.shields.io/badge/version-5.0.0-blueviolet?style=for-the-badge)](https://github.com/Nickalus12/Loom/releases)
-[![Tests](https://img.shields.io/badge/tests-398_passing-brightgreen?style=for-the-badge)](tests/)
+[![Version](https://img.shields.io/badge/version-6.0.0-blueviolet?style=for-the-badge)](https://github.com/Nickalus12/Loom/releases)
+[![Tests](https://img.shields.io/badge/tests-684_passing-brightgreen?style=for-the-badge)](tests/)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 
@@ -26,7 +26,7 @@
 
 ---
 
-`22 Agents` | `42 MCP Tools` | `398 Tests` | `3 Safety Tiers` | `13 Commands` | `7 Agent Tools`
+`36 Traits` | `49 MCP Tools` | `684 Tests` | `3 Safety Tiers` | `13 Commands` | `4 Archetypes` | `Nia + Context7 Grounding`
 
 </div>
 
@@ -49,6 +49,8 @@ It works as a plugin for both **Gemini CLI** and **Claude Code**, or standalone 
 | **Knowledge graph memory** | Neo4j/Graphiti temporal graph | Vector store only | Vector store only | Vector store only |
 | **Git safety** | Auto-branch before writes, auto-diff | Manual | Manual | Manual |
 | **3-tier model routing** | Azure (heavy) / Gemini (light) / Ollama (local) | Single provider | Single provider | Single provider |
+| **Dynamic agent synthesis** | Runtime trait composition with 36 atomic traits | Fixed chains | Fixed crews | Fixed agents |
+| **Doc grounding** | Nia AI codebase search + Context7 library docs | Manual context | Manual context | Manual context |
 
 ---
 
@@ -148,7 +150,7 @@ flowchart TB
         CLI[Loom CLI]
     end
 
-    subgraph MCP["MCP Layer (42 tools)"]
+    subgraph MCP["MCP Layer (49 tools)"]
         NodeMCP[Node.js MCP Server]
         PyMCP[Python FastMCP Server]
     end
@@ -203,6 +205,59 @@ flowchart TB
     style Models fill:#45b7d1,color:#fff
     style Memory fill:#96ceb4,color:#fff
 ```
+
+---
+
+## Dynamic Agent Fabric (DAF)
+
+Instead of 22 hardcoded agents, Loom V6 introduces a **trait-based composition system**. Agents are synthesized at runtime from atomic capability fragments:
+
+```
+get_trait_index → validate_trait_composition → synthesize_agent → delegation
+```
+
+### How It Works
+
+1. **Choose an archetype** — `builder` (read/write/shell), `analyst` (read-only), `architect` (design/plan), `investigator` (research)
+2. **Select traits** — Pick from 21 capabilities, 6 constraints, 5 output contracts
+3. **Auto-composition** — Required traits load automatically (e.g., `code-writing` pulls in `solid-principles`)
+4. **Tool resolution** — Archetype permissions intersect with trait requirements
+5. **Grounding** — Nia AI searches your codebase, Context7 fetches library docs
+6. **Prompt assembly** — Trait methodologies compiled into a complete agent prompt
+
+### Example
+
+```
+synthesize_agent({
+  archetype: "builder",
+  traits: ["code-writing", "security-analysis", "test-generation"],
+  task_context: "Add input validation to the API",
+  detected_libraries: ["express", "joi"]
+})
+
+→ Agent with: write_file, replace, read_file, grep_search, run_shell_command
+  Temperature: 0.2 | Max turns: 25 | Timeout: 10 min
+  Prompt: SOLID principles + code-writing methodology + OWASP security
+          + test generation + Express/Joi documentation context
+```
+
+### Trait Categories
+
+| Category | Count | Purpose |
+|----------|-------|---------|
+| **Archetypes** | 4 | Tool permissions + behavioral boundaries |
+| **Capabilities** | 21 | Core methodologies (code-writing, debugging, security, etc.) |
+| **Constraints** | 6 | Cross-cutting standards (OWASP, SOLID, WCAG, GDPR, etc.) |
+| **Output Contracts** | 5 | Required report formats (implementation, review, audit, etc.) |
+
+### Grounding Sources
+
+| Source | What It Provides |
+|--------|-----------------|
+| **Nia AI** | Semantic search across indexed repos and documentation |
+| **Context7** | Library/framework documentation (React, Express, Prisma, etc.) |
+
+The original 22 agent definitions in `agents/` are preserved as fallback if synthesis fails.
 
 ---
 
@@ -289,7 +344,9 @@ temperature: 0.3
 ---
 
 <details>
-<summary><h2>The 22 Agents</h2></summary>
+<summary><h2>The 22 Agents (Fallback Roster)</h2></summary>
+
+These static agents are preserved as fallback when trait synthesis is unavailable:
 
 | Agent | Tier | Focus |
 |-------|------|-------|
@@ -421,7 +478,7 @@ Loom installs lifecycle hooks that run automatically in both Gemini CLI and Clau
 
 <div align="center">
 
-[Ollama](https://ollama.com) | [Google Gemini](https://ai.google.dev) | [Azure AI Foundry](https://ai.azure.com) | [Neo4j](https://neo4j.com) | [Graphiti](https://github.com/getzep/graphiti) | [LiteLLM](https://github.com/BerriAI/litellm) | [Rich](https://github.com/Textualize/rich) | [FastMCP](https://github.com/jlowin/fastmcp) | [PowerShell 7](https://github.com/PowerShell/PowerShell)
+[Ollama](https://ollama.com) | [Google Gemini](https://ai.google.dev) | [Azure AI Foundry](https://ai.azure.com) | [Nia AI](https://trynia.ai) | [Context7](https://context7.com) | [Neo4j](https://neo4j.com) | [Graphiti](https://github.com/getzep/graphiti) | [LiteLLM](https://github.com/BerriAI/litellm) | [Rich](https://github.com/Textualize/rich) | [FastMCP](https://github.com/jlowin/fastmcp) | [PowerShell 7](https://github.com/PowerShell/PowerShell)
 
 </div>
 
@@ -429,7 +486,7 @@ Loom installs lifecycle hooks that run automatically in both Gemini CLI and Clau
 
 ## Contributing
 
-Contributions welcome. The codebase has 398 tests — run them before submitting:
+Contributions welcome. The codebase has 684 tests — run them before submitting:
 
 ```bash
 loom test
