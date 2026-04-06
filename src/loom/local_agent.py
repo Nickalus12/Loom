@@ -262,6 +262,11 @@ class LocalAgent:
 
     async def run(self, task: str, system_prompt: str | None = None) -> AgentResult:
         run_start = time.monotonic()
+        logger.info("=" * 60)
+        logger.info("[Agent] Starting task: %s", task[:100])
+        logger.info("[Agent] Tool model: %s | Analysis model: %s | Max turns: %d",
+                     self._tool_model, self._analysis_model, self._max_turns)
+        logger.info("=" * 60)
         self._telem_inc("agent_tasks_total")
 
         self._cache.clear()
@@ -299,13 +304,15 @@ class LocalAgent:
 
         for turn in range(self._max_turns):
             turns_used = turn + 1
+            turn_start = time.monotonic()
+            logger.info("[Turn %d/%d] Calling %s...", turn + 1, self._max_turns, self._tool_model)
 
             try:
                 response = await self._llm_call(
                     self._tool_model, messages, tools=self._AGENT_TOOLS
                 )
             except Exception as exc:
-                logger.error("Agent loop LLM call failed on turn %d: %s", turn, exc)
+                logger.error("[Turn %d] LLM FAILED after %.1fs: %s", turn + 1, time.monotonic() - turn_start, exc)
                 self._telem_inc("agent_tasks_failed")
                 self._telem_inc("model_call_errors", provider="ollama")
                 final_response = f"LLM call failed on turn {turn}: {exc}"
@@ -331,9 +338,11 @@ class LocalAgent:
                 "content": choice.message.content or "",
             }
 
+            turn_elapsed = time.monotonic() - turn_start
             if not choice.message.tool_calls:
                 messages.append(assistant_msg)
                 final_response = choice.message.content or ""
+                logger.info("[Turn %d] Final response (%.1fs, no tool calls)", turn + 1, turn_elapsed)
                 break
 
             assistant_msg["tool_calls"] = [
@@ -349,7 +358,10 @@ class LocalAgent:
             ]
             messages.append(assistant_msg)
 
-            for tc in choice.message.tool_calls:
+            n_calls = len(choice.message.tool_calls)
+            logger.info("[Turn %d] LLM responded in %.1fs with %d tool call(s)", turn + 1, time.monotonic() - turn_start, n_calls)
+
+            for tc_idx, tc in enumerate(choice.message.tool_calls):
                 total_tool_calls += 1
                 tool_name = tc.function.name
                 self._telem_inc("agent_tool_calls_total", tool=tool_name)
@@ -360,6 +372,10 @@ class LocalAgent:
 
                 was_cached = False
                 was_retried = False
+
+                tool_start = time.monotonic()
+                args_preview = {k: (v[:40] + "..." if isinstance(v, str) and len(v) > 40 else v) for k, v in args.items()}
+                logger.info("[Turn %d] Tool %d/%d: %s(%s)", turn + 1, tc_idx + 1, n_calls, tool_name, json.dumps(args_preview, default=str)[:100])
 
                 cache_key = self._cache_key(tool_name, args)
                 if tool_name in self._CACHEABLE_TOOLS and cache_key in self._cache:
@@ -400,6 +416,7 @@ class LocalAgent:
                     "content": truncated_result,
                 })
 
+                tool_elapsed_ms = int((time.monotonic() - tool_start) * 1000)
                 log_entry = {
                     "turn": turn,
                     "tool": tool_name,
@@ -410,20 +427,24 @@ class LocalAgent:
                     "result_preview": result[:200],
                     "cached": was_cached,
                     "retried": was_retried,
+                    "duration_ms": tool_elapsed_ms,
                 }
                 self._tool_log.append(log_entry)
+                status = "CACHED" if was_cached else f"{tool_elapsed_ms}ms"
                 logger.info(
-                    "[Agent Turn %d] Tool: %s | Cached: %s | Retried: %s",
-                    turn,
+                    "[Turn %d] Tool %s -> %s%s",
+                    turn + 1,
                     tool_name,
-                    was_cached,
-                    was_retried,
+                    status,
+                    " (retried)" if was_retried else "",
                 )
 
+            turn_total = time.monotonic() - turn_start
             logger.info(
-                "Agent turn %d: %d tool calls",
-                turn,
+                "[Turn %d] Complete: %d tool calls, %.1fs total",
+                turn + 1,
                 len(choice.message.tool_calls),
+                turn_total,
             )
         else:
             final_response = messages[-1].get("content", "Max turns reached")
@@ -483,17 +504,28 @@ class LocalAgent:
         if tools:
             kwargs["tools"] = tools
 
+        msg_count = len(messages)
+        input_chars = sum(len(m.get("content", "")) for m in messages)
+        logger.info("[LLM] Calling %s (%d msgs, ~%d chars)...", model, msg_count, input_chars)
+
         call_start = time.monotonic()
         try:
             result = await asyncio.wait_for(
                 self._client.chat.completions.create(**kwargs),
                 timeout=120.0,
             )
+        except asyncio.TimeoutError:
+            logger.error("[LLM] TIMEOUT after 120s waiting for %s", model)
+            self._telem_inc("model_call_errors", provider="ollama")
+            raise
         except Exception:
+            logger.error("[LLM] ERROR after %.1fs from %s", time.monotonic() - call_start, model)
             self._telem_inc("model_call_errors", provider="ollama")
             raise
 
         call_elapsed = time.monotonic() - call_start
+        has_tools = bool(result.choices[0].message.tool_calls)
+        logger.info("[LLM] %s responded in %.1fs (tool_calls=%s)", model, call_elapsed, has_tools)
         self._telem_observe("model_call_duration_seconds", call_elapsed, provider="ollama")
 
         content = result.choices[0].message.content
@@ -503,6 +535,8 @@ class LocalAgent:
         return result
 
     async def _planning_turn(self, task: str) -> str:
+        logger.info("[Planning] Calling %s for plan...", self._analysis_model)
+        plan_start = time.monotonic()
         try:
             response = await asyncio.wait_for(
                 self._client.chat.completions.create(
@@ -522,9 +556,11 @@ class LocalAgent:
                 ),
                 timeout=60.0,
             )
-            return response.choices[0].message.content or ""
+            plan_text = response.choices[0].message.content or ""
+            logger.info("[Planning] Done in %.1fs (%d chars)", time.monotonic() - plan_start, len(plan_text))
+            return plan_text
         except Exception as exc:
-            logger.debug("Planning turn failed: %s", exc)
+            logger.warning("[Planning] Failed after %.1fs: %s", time.monotonic() - plan_start, exc)
             return ""
 
     async def _analysis_turn(self, messages: list[dict[str, Any]]) -> str:

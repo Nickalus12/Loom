@@ -847,8 +847,9 @@ class TestProgressLogging:
         with caplog.at_level(logging.INFO, logger="loom.local_agent"):
             await agent.run("Find python files")
 
-        tool_log_messages = [r.message for r in caplog.records if "find_files" in r.message]
-        assert len(tool_log_messages) >= 1
+        all_messages = [r.message for r in caplog.records]
+        tool_log_messages = [m for m in all_messages if "find_files" in m]
+        assert len(tool_log_messages) >= 1, f"Expected find_files in logs, got: {all_messages[-5:]}"
 
 
 # ---------------------------------------------------------------------------
