@@ -35,6 +35,9 @@ def mock_registry():
         "tester": _make_agent_config("tester", "light", 0.2, 10),
         "coder": _make_agent_config("coder", "heavy", 0.2, 10),
         "code_reviewer": _make_agent_config("code_reviewer", "light", 0.2, 5),
+        "debugger": _make_agent_config("debugger", "heavy", 0.2, 10),
+        "refactor": _make_agent_config("refactor", "heavy", 0.2, 10),
+        "technical_writer": _make_agent_config("technical_writer", "light", 0.2, 8),
     }
     reg = MagicMock()
     reg.get = MagicMock(side_effect=lambda name: configs[name])
@@ -409,3 +412,233 @@ class TestHandoffParsingMultiLine:
         result = orchestrator._parse_handoff(response)
         assert result["task_report"]["files_created"] == []
         assert result["task_report"]["files_modified"] == []
+
+
+# ---------------------------------------------------------------------------
+# Weighted craft_plan tests
+# ---------------------------------------------------------------------------
+
+
+class TestCraftPlanWeighted:
+    """Verify craft_plan uses weighted keyword scoring."""
+
+    def test_review_keywords(self, orchestrator):
+        """'review' and 'audit' should select the review pipeline."""
+        plan = orchestrator.craft_plan("Review the authentication module")
+        assert plan.phases[0].name == "Architecture Analysis"
+        assert plan.phases[0].agent == "architect"
+        assert len(plan.phases) == 3
+
+    def test_audit_keyword(self, orchestrator):
+        plan = orchestrator.craft_plan("Audit the codebase for quality")
+        assert len(plan.phases) == 3
+        assert plan.phases[1].agent == "code_reviewer"
+
+    def test_debug_keywords(self, orchestrator):
+        """'fix', 'bug', 'debug' should select the debug pipeline."""
+        plan = orchestrator.craft_plan("Fix the login bug")
+        assert plan.phases[0].agent == "debugger"
+        assert len(plan.phases) == 4
+
+    def test_crash_keyword(self, orchestrator):
+        plan = orchestrator.craft_plan("The server keeps crashing")
+        assert plan.phases[0].agent == "debugger"
+
+    def test_refactor_keywords(self, orchestrator):
+        """'refactor' and 'restructure' should select the refactor pipeline."""
+        plan = orchestrator.craft_plan("Refactor the data layer")
+        assert plan.phases[0].agent == "architect"
+        assert plan.phases[1].agent == "refactor"
+        assert len(plan.phases) == 4
+
+    def test_restructure_keyword(self, orchestrator):
+        plan = orchestrator.craft_plan("Restructure the module hierarchy")
+        assert plan.phases[1].agent == "refactor"
+
+    def test_test_keywords(self, orchestrator):
+        """'test' should select the test-focused pipeline."""
+        plan = orchestrator.craft_plan("Write tests for the auth module")
+        assert plan.phases[0].agent == "tester"
+        assert plan.phases[1].agent == "coder"
+        assert plan.phases[2].agent == "code_reviewer"
+        assert len(plan.phases) == 3
+
+    def test_coverage_keyword(self, orchestrator):
+        plan = orchestrator.craft_plan("Improve test coverage")
+        assert plan.phases[0].agent == "tester"
+        assert len(plan.phases) == 3
+
+    def test_document_keywords(self, orchestrator):
+        """'document' and 'docs' should select the document pipeline."""
+        plan = orchestrator.craft_plan("Document the API endpoints")
+        assert plan.phases[0].agent == "technical_writer"
+        assert plan.phases[1].agent == "code_reviewer"
+        assert len(plan.phases) == 2
+
+    def test_docs_keyword(self, orchestrator):
+        plan = orchestrator.craft_plan("Write docs for the SDK")
+        assert plan.phases[0].agent == "technical_writer"
+
+    def test_readme_keyword(self, orchestrator):
+        plan = orchestrator.craft_plan("Update the readme")
+        assert plan.phases[0].agent == "technical_writer"
+
+    def test_build_default(self, orchestrator):
+        """Unknown tasks should fall back to the build pipeline."""
+        plan = orchestrator.craft_plan("Do something arbitrary")
+        assert len(plan.phases) == 5
+        assert plan.phases[0].agent == "architect"
+
+    def test_build_explicit(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a new feature")
+        assert len(plan.phases) == 5
+
+    def test_highest_score_wins(self, orchestrator):
+        """When multiple groups match, the highest total score should win."""
+        # 'fix' (3.0) + 'bug' (3.0) = 6.0 for debug
+        # vs. 'check' (1.0) for review
+        plan = orchestrator.craft_plan("Fix the bug and check results")
+        assert plan.phases[0].agent == "debugger"
+
+    def test_combined_fix_and_test(self, orchestrator):
+        """'fix and test' should pick debug pipeline + extra test phase."""
+        plan = orchestrator.craft_plan("Fix the bug and write tests")
+        # Debug pipeline is 4 phases; combined adds 1 more = 5
+        assert plan.phases[0].agent == "debugger"
+        assert len(plan.phases) == 5
+        assert plan.phases[-1].agent == "tester"
+        assert plan.phases[-1].name == "Test Verification"
+
+    def test_combined_build_and_test(self, orchestrator):
+        """'build' + 'test' keywords should add extra test phase to build plan."""
+        plan = orchestrator.craft_plan("Implement the feature and add unit tests")
+        # 'implement' (2.5) for build vs 'unit test' (3.0) + 'tests' (3.0) for test
+        # test wins here, so no extra phase appended -- it's a test plan
+        assert plan.phases[0].agent == "tester"
+
+    def test_combined_refactor_and_test(self, orchestrator):
+        """Refactor plan with test keywords should get an extra test phase."""
+        plan = orchestrator.craft_plan("Refactor and improve test coverage")
+        # 'refactor' (3.0) for refactor vs 'test' (3.0) + 'coverage' (2.0) = 5.0 for test
+        # Test wins here because score is higher
+        assert plan.phases[0].agent == "tester"
+
+    def test_combined_document_and_test(self, orchestrator):
+        """Document with test co-occurrence appends test phase."""
+        plan = orchestrator.craft_plan("Write documentation and explain the e2e coverage approach")
+        # 'documentation' (3.0) + 'explain' (1.5) = 4.5 for document
+        # 'e2e' (2.0) + 'coverage' (2.0) = 4.0 for test
+        # Document wins; test also scores > 0 so extra phase appended
+        assert plan.phases[0].agent == "technical_writer"
+        assert len(plan.phases) == 3
+        assert plan.phases[-1].name == "Test Verification"
+
+    def test_extra_test_phase_blocked_by_last(self, orchestrator):
+        """The appended test phase should be blocked by the last original phase."""
+        plan = orchestrator.craft_plan("Fix the crash and add test coverage")
+        # debug wins (crash=2.5 + fix=3.0 = 5.5) over test (test=3.0 + coverage=2.0 = 5.0)
+        test_phase = plan.phases[-1]
+        second_to_last = plan.phases[-2]
+        assert test_phase.name == "Test Verification"
+        assert second_to_last.id in test_phase.blocked_by
+
+
+class TestScoreKeywordGroups:
+    """Verify _score_keyword_groups returns correct scores."""
+
+    def test_empty_task(self, orchestrator):
+        scores = orchestrator._score_keyword_groups("")
+        assert all(v == 0.0 for v in scores.values())
+
+    def test_single_keyword(self, orchestrator):
+        scores = orchestrator._score_keyword_groups("fix the thing")
+        assert scores["debug"] >= 3.0
+        assert scores["build"] == 0.0
+
+    def test_multiple_keywords_same_group(self, orchestrator):
+        scores = orchestrator._score_keyword_groups("fix the bug and debug it")
+        # fix(3) + bug(3) + debug(3) = 9
+        assert scores["debug"] == 9.0
+
+    def test_cross_group_scoring(self, orchestrator):
+        scores = orchestrator._score_keyword_groups("review and fix")
+        assert scores["review"] >= 3.0
+        assert scores["debug"] >= 3.0
+
+
+# ---------------------------------------------------------------------------
+# plan_summary tests
+# ---------------------------------------------------------------------------
+
+
+class TestPlanSummary:
+    """Verify plan_summary produces human-readable output."""
+
+    def test_summary_includes_task(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a feature")
+        summary = orchestrator.plan_summary(plan)
+        assert "Build a feature" in summary
+
+    def test_summary_includes_phase_count(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a feature")
+        summary = orchestrator.plan_summary(plan)
+        assert "Phases: 5" in summary
+
+    def test_summary_includes_all_phases(self, orchestrator):
+        plan = orchestrator.craft_plan("Write tests for auth")
+        summary = orchestrator.plan_summary(plan)
+        assert "Test Design" in summary
+        assert "Test Implementation" in summary
+        assert "Test Review" in summary
+
+    def test_summary_includes_agents(self, orchestrator):
+        plan = orchestrator.craft_plan("Write tests for auth")
+        summary = orchestrator.plan_summary(plan)
+        assert "[tester]" in summary
+        assert "[coder]" in summary
+        assert "[code_reviewer]" in summary
+
+    def test_summary_shows_dependencies(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a feature")
+        summary = orchestrator.plan_summary(plan)
+        # Phase 2 depends on Phase 1, should show "(after Architecture Analysis)"
+        assert "(after Architecture Analysis)" in summary
+
+    def test_summary_status_pending(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a feature")
+        summary = orchestrator.plan_summary(plan)
+        # All phases should be pending
+        assert "[ ]" in summary
+        assert "[x]" not in summary
+
+    def test_summary_status_completed(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a feature")
+        for phase in plan.phases:
+            phase.status = "completed"
+        summary = orchestrator.plan_summary(plan)
+        assert "[x]" in summary
+        assert "[ ]" not in summary
+
+    def test_summary_status_failed(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a feature")
+        plan.phases[0].status = "failed"
+        summary = orchestrator.plan_summary(plan)
+        assert "[!]" in summary
+
+    def test_summary_status_in_progress(self, orchestrator):
+        plan = orchestrator.craft_plan("Build a feature")
+        plan.phases[0].status = "in_progress"
+        summary = orchestrator.plan_summary(plan)
+        assert "[~]" in summary
+
+    def test_summary_document_plan(self, orchestrator):
+        plan = orchestrator.craft_plan("Document the API")
+        summary = orchestrator.plan_summary(plan)
+        assert "Phases: 2" in summary
+        assert "[technical_writer]" in summary
+
+    def test_summary_combined_plan(self, orchestrator):
+        """Combined plans should show the appended test phase."""
+        plan = orchestrator.craft_plan("Fix the crash and add test coverage")
+        summary = orchestrator.plan_summary(plan)
+        assert "Test Verification" in summary

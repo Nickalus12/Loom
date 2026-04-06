@@ -312,24 +312,142 @@ class LoomOrchestrator:
         logger.info("Plan execution complete: all %d phases succeeded", len(plan.phases))
         return plan
 
-    def craft_plan(self, task: str) -> SwarmPlan:
-        """Create a task-appropriate phase plan based on keyword analysis.
+    # Keyword groups with associated weights.  Each group maps a plan type
+    # to a dict of ``{keyword: weight}``.  When ``craft_plan`` is called the
+    # task text is scanned against every keyword in every group and a total
+    # score is accumulated per plan type.  The highest-scoring group wins.
+    # "build" acts as the default when no other group scores above zero.
+    KEYWORD_GROUPS: dict[str, dict[str, float]] = {
+        "review": {
+            "review": 3.0,
+            "audit": 3.0,
+            "inspect": 2.0,
+            "evaluate": 1.5,
+            "assess": 1.5,
+            "check": 1.0,
+        },
+        "debug": {
+            "fix": 3.0,
+            "bug": 3.0,
+            "debug": 3.0,
+            "error": 2.0,
+            "crash": 2.5,
+            "broken": 2.0,
+            "issue": 1.5,
+            "fault": 1.5,
+            "patch": 2.0,
+        },
+        "refactor": {
+            "refactor": 3.0,
+            "restructure": 2.5,
+            "reorganize": 2.0,
+            "simplify": 1.5,
+            "clean up": 2.0,
+            "cleanup": 2.0,
+            "deduplicate": 1.5,
+        },
+        "test": {
+            "test": 3.0,
+            "tests": 3.0,
+            "testing": 2.5,
+            "coverage": 2.0,
+            "spec": 1.5,
+            "unit test": 3.0,
+            "integration test": 3.0,
+            "e2e": 2.0,
+        },
+        "document": {
+            "document": 3.0,
+            "documentation": 3.0,
+            "docs": 2.5,
+            "docstring": 2.5,
+            "readme": 2.0,
+            "explain": 1.5,
+            "annotate": 1.5,
+            "api docs": 3.0,
+        },
+        "build": {
+            "build": 2.0,
+            "add": 1.5,
+            "implement": 2.5,
+            "create": 2.0,
+            "develop": 1.5,
+            "feature": 1.5,
+            "new": 1.0,
+        },
+    }
 
-        Plan selection:
-        - "review" / "audit" keywords  -> 3-phase review pipeline
-        - "fix" / "bug" keywords       -> 4-phase debug pipeline
-        - "refactor" keyword            -> 4-phase refactor pipeline
-        - default ("build"/"add"/"implement" or anything else) -> 5-phase full pipeline
-        """
+    # Plan types that can append an extra test phase when "test" keywords
+    # co-occur with another primary plan type.
+    _TEST_APPENDABLE_PLANS = {"debug", "build", "refactor", "document"}
+
+    def _score_keyword_groups(self, task: str) -> dict[str, float]:
+        """Score each keyword group against *task* and return the totals."""
         task_lower = task.lower()
+        scores: dict[str, float] = {}
+        for group_name, keywords in self.KEYWORD_GROUPS.items():
+            total = 0.0
+            for keyword, weight in keywords.items():
+                if keyword in task_lower:
+                    total += weight
+            scores[group_name] = total
+        return scores
 
-        if any(kw in task_lower for kw in ("review", "audit")):
-            return self._plan_review(task)
-        if any(kw in task_lower for kw in ("fix", "bug")):
-            return self._plan_debug(task)
-        if "refactor" in task_lower:
-            return self._plan_refactor(task)
-        return self._plan_build(task)
+    def craft_plan(self, task: str) -> SwarmPlan:
+        """Create a task-appropriate phase plan based on weighted keyword analysis.
+
+        Each keyword group (review, debug, refactor, test, document, build)
+        has multiple keywords with numeric weights.  The task is scored
+        against every group and the highest-scoring group selects the plan.
+        If no group scores above zero, the *build* pipeline is chosen as
+        the default.
+
+        Combined keywords are supported: when the winning plan type is in
+        ``_TEST_APPENDABLE_PLANS`` **and** the "test" group also scores
+        above zero (but is not the winner), an extra test-verification
+        phase is appended to the plan.
+        """
+        scores = self._score_keyword_groups(task)
+
+        # Pick the winning plan type (highest score, "build" as default)
+        best_type = max(scores, key=lambda k: scores[k])
+        if scores[best_type] == 0:
+            best_type = "build"
+
+        plan_map = {
+            "review": self._plan_review,
+            "debug": self._plan_debug,
+            "refactor": self._plan_refactor,
+            "test": self._plan_test,
+            "document": self._plan_document,
+            "build": self._plan_build,
+        }
+
+        plan = plan_map[best_type](task)
+
+        # Combined keyword support: append a test phase when test keywords
+        # are present but test is not the primary plan.
+        if (
+            best_type in self._TEST_APPENDABLE_PLANS
+            and scores.get("test", 0) > 0
+            and best_type != "test"
+        ):
+            max_id = max(p.id for p in plan.phases)
+            last_id = max_id
+            plan.phases.append(
+                Phase(
+                    id=max_id + 1,
+                    name="Test Verification",
+                    agent="tester",
+                    objective=(
+                        "Write and run tests to verify the changes. "
+                        "Cover edge cases and ensure no regressions."
+                    ),
+                    blocked_by=[last_id],
+                )
+            )
+
+        return plan
 
     def _plan_review(self, task: str) -> SwarmPlan:
         return SwarmPlan(
@@ -517,6 +635,102 @@ class LoomOrchestrator:
                 ),
             ],
         )
+
+    def _plan_test(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
+            task=task,
+            phases=[
+                Phase(
+                    id=1,
+                    name="Test Design",
+                    agent="tester",
+                    objective=(
+                        "Analyze the codebase and design a comprehensive test strategy. "
+                        "Identify units, integration points, and edge cases that need coverage."
+                    ),
+                ),
+                Phase(
+                    id=2,
+                    name="Test Implementation",
+                    agent="coder",
+                    objective=(
+                        "Implement the test suite based on the tester's strategy. "
+                        "Write unit tests, integration tests, and fixtures as specified."
+                    ),
+                    blocked_by=[1],
+                ),
+                Phase(
+                    id=3,
+                    name="Test Review",
+                    agent="code_reviewer",
+                    objective=(
+                        "Review the test suite for completeness, correctness, and best practices. "
+                        "Verify edge cases are covered and assertions are meaningful."
+                    ),
+                    blocked_by=[2],
+                ),
+            ],
+        )
+
+    def _plan_document(self, task: str) -> SwarmPlan:
+        return SwarmPlan(
+            task=task,
+            phases=[
+                Phase(
+                    id=1,
+                    name="Documentation",
+                    agent="technical_writer",
+                    objective=(
+                        "Analyze the codebase and produce clear, comprehensive documentation. "
+                        "Include API references, usage examples, and architecture overviews as appropriate."
+                    ),
+                ),
+                Phase(
+                    id=2,
+                    name="Documentation Review",
+                    agent="code_reviewer",
+                    objective=(
+                        "Review the documentation for technical accuracy, completeness, and clarity. "
+                        "Verify code examples are correct and API references match the implementation."
+                    ),
+                    blocked_by=[1],
+                ),
+            ],
+        )
+
+    def plan_summary(self, plan: SwarmPlan) -> str:
+        """Return a human-readable summary of a SwarmPlan.
+
+        The summary includes the task description, the number of phases,
+        and a numbered list of each phase with its agent and status.
+        Dependency relationships are noted in parentheses.
+        """
+        lines: list[str] = []
+        lines.append(f"Plan: {plan.task}")
+        lines.append(f"Phases: {len(plan.phases)}")
+        lines.append("")
+
+        for phase in plan.phases:
+            dep_info = ""
+            if phase.blocked_by:
+                dep_names = []
+                for dep_id in phase.blocked_by:
+                    dep_phase = next((p for p in plan.phases if p.id == dep_id), None)
+                    dep_names.append(dep_phase.name if dep_phase else f"#{dep_id}")
+                dep_info = f" (after {', '.join(dep_names)})"
+
+            status_marker = {
+                "pending": "[ ]",
+                "in_progress": "[~]",
+                "completed": "[x]",
+                "failed": "[!]",
+            }.get(phase.status, "[?]")
+
+            lines.append(
+                f"  {status_marker} {phase.id}. {phase.name} [{phase.agent}]{dep_info}"
+            )
+
+        return "\n".join(lines)
 
     async def execute_swarm(self, task: str) -> SwarmPlan:
         """

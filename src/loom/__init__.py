@@ -6,6 +6,7 @@ from loom.ast_parser import ASTParser
 from loom.local_inference import LocalInferenceEngine
 from loom.protocols import LanguageParser, MemoryBackend
 from loom.powershell_tools import PowerShellKANEngine, PowerShellREPLManager
+from loom.runtime import RuntimeCapabilities, get_runtime
 
 __all__ = [
     "LoomSwarmMemory",
@@ -18,4 +19,6 @@ __all__ = [
     "MemoryBackend",
     "PowerShellKANEngine",
     "PowerShellREPLManager",
+    "RuntimeCapabilities",
+    "get_runtime",
 ]

@@ -10,6 +10,7 @@ from loom.powershell_tools.kan_engine import (
     _DANGEROUS_CMDLETS,
     _NETWORK_CMDLETS,
     _SAFE_INDICATORS,
+    _SAFE_PIPELINE_TERMINATORS,
 )
 
 
@@ -125,15 +126,32 @@ class TestFeatureExtraction:
         assert features[13] == 1.0
 
     def test_feature_safe_indicators_reduce_score(self, kan):
-        """Feature 14 (safe_indicators) should be 1.0 when safe cmdlets are present."""
+        """Feature 14 (safe_indicators) should increase with safe cmdlets present."""
         features = kan.extract_features("Get-ChildItem . | Write-Host")
-        assert features[14] == 1.0
+        # 2 safe indicators (get-childitem, write-host) => 2/3.0 ~= 0.667
+        assert features[14] > 0.0
+        # 3+ safe indicators should reach 1.0 base (before pipeline/whatif bonuses)
+        features_max = kan.extract_features("Get-ChildItem . | Where-Object { $_ } | Write-Host")
+        assert features_max[14] >= 1.0
 
     def test_feature_nesting_complexity(self, kan):
         """Feature 15 (nesting_complexity) should count braces and parens, normalized by 10."""
         features = kan.extract_features("if ($true) { foreach ($x in $items) { $x } }")
         brace_count = features[15]
         assert brace_count > 0.0
+
+    def test_variable_name_with_rm_not_deletion(self, kan):
+        """Variable names containing 'rm' (e.g. $formattedRm) should NOT trigger deletion detection."""
+        features = kan.extract_features("$formattedRm = 'some value'")
+        assert features[4] == 0.0, "Variable name $formattedRm should not trigger has_deletion"
+
+    def test_safe_indicators_weighted(self, kan):
+        """Commands with 3+ safe indicators should score higher on feature 14 than commands with just 1."""
+        features_one = kan.extract_features("Get-Date")
+        features_many = kan.extract_features("Get-ChildItem . | Where-Object { $_ } | Format-Table")
+        assert features_many[14] > features_one[14], (
+            f"3+ safe indicators ({features_many[14]}) should score higher than 1 ({features_one[14]})"
+        )
 
     def test_feature_names_match_count(self):
         """_FEATURE_NAMES should have exactly NUM_FEATURES entries."""
@@ -198,6 +216,36 @@ class TestRiskScoring:
         long_cmd = "A" * 200
         result = await kan.score_risk(long_cmd)
         assert len(result["command_preview"]) <= 100
+
+    async def test_whatif_reduces_score(self, kan):
+        """A command with -WhatIf should score lower (safer) than the same command without it."""
+        result_without = await kan.score_risk("Remove-Item ./temp -Recurse -Force")
+        result_with = await kan.score_risk("Remove-Item ./temp -Recurse -Force -WhatIf")
+        assert result_with["risk_score"] < result_without["risk_score"], (
+            f"-WhatIf score ({result_with['risk_score']}) should be lower than without ({result_without['risk_score']})"
+        )
+
+    async def test_pipeline_to_format_table_is_safe(self, kan):
+        """Get-X | Format-Table should score 0 (safe) because Format-Table is a safe pipeline terminator."""
+        result = await kan.score_risk("Get-Process | Format-Table")
+        assert result["risk_score"] == 0.0, (
+            f"Expected risk_score 0.0 for safe pipeline, got {result['risk_score']}"
+        )
+
+    async def test_pipeline_to_select_object_is_safe(self, kan):
+        """Get-X | Select-Object Y should score 0 (safe) because Select-Object is a safe pipeline terminator."""
+        result = await kan.score_risk("Get-Service | Select-Object Name")
+        assert result["risk_score"] == 0.0, (
+            f"Expected risk_score 0.0 for safe pipeline, got {result['risk_score']}"
+        )
+
+    async def test_loom_cmdlets_are_safe(self, kan):
+        """Loom-specific cmdlets like Read-LoomFile and Get-LoomGitStatus should score 0 (safe)."""
+        for cmd in ["Read-LoomFile ./test.py", "Get-LoomGitStatus"]:
+            result = await kan.score_risk(cmd)
+            assert result["risk_score"] == 0.0, (
+                f"Expected risk_score 0.0 for Loom cmdlet '{cmd}', got {result['risk_score']}"
+            )
 
     def test_heuristic_weights_structure(self, kan):
         """Heuristic scoring should use specific feature indices for weighting."""
@@ -351,6 +399,14 @@ class TestKANEdgeCases:
         result = await kan.score_risk(long_cmd)
         assert result["risk_score"] >= 0.0
         assert result["risk_score"] <= 1.0
+
+    def test_safe_pipeline_terminators_exist(self):
+        """_SAFE_PIPELINE_TERMINATORS should contain expected formatting and filtering cmdlets."""
+        expected = {"select-object", "where-object", "sort-object", "format-table", "format-list",
+                    "format-wide", "measure-object", "convertto-json", "out-string", "out-null"}
+        assert expected.issubset(_SAFE_PIPELINE_TERMINATORS), (
+            f"Missing entries: {expected - _SAFE_PIPELINE_TERMINATORS}"
+        )
 
     async def test_learn_from_history_no_memory(self, kan):
         """Should return failure when no memory engine is configured."""

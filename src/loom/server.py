@@ -46,6 +46,7 @@ from loom.local_inference import LocalInferenceEngine
 from loom.powershell_tools import PowerShellREPLManager
 from loom.powershell_tools.kan_engine import PowerShellKANEngine
 from loom.local_agent import LocalAgent
+from loom.runtime import get_runtime
 
 mcp = FastMCP(
     "Loom Enterprise Swarm",
@@ -126,16 +127,31 @@ def _get_local_agent() -> LocalAgent:
 @mcp.tool()
 async def craft(
     task: str = Field(description="The engineering task to craft via multi-agent pipeline."),
-    mode: str = Field(default="cloud", description="Execution mode: 'cloud', 'local' (Ollama only), or 'hybrid' (local tools + cloud analysis)."),
+    mode: str = Field(default="auto", description="Execution mode: 'auto' (detect best), 'cloud', 'local' (Ollama only), or 'hybrid' (local tools + cloud analysis)."),
 ) -> str:
     """Craft a solution using Loom's multi-agent pipeline.
-    Runs: Architect → Security + Quality (parallel) → Coder → Code Review.
+    Runs: Architect -> Security + Quality (parallel) -> Coder -> Code Review.
+    mode='auto': Detects available services and picks the best strategy.
     mode='local': All Ollama. mode='hybrid': Local tool-calling + cloud analysis. mode='cloud': All cloud."""
     from loom.telemetry import get_telemetry
     tel = get_telemetry()
     tel.waterfall.begin("craft")
     try:
-        effective_mode = mode or os.getenv("LOOM_CRAFT_MODE", "cloud")
+        effective_mode = mode or os.getenv("LOOM_CRAFT_MODE", "auto")
+
+        # Auto-detect: probe services and select best mode
+        if effective_mode == "auto":
+            runtime = await get_runtime()
+            caps = runtime._cache
+            effective_mode = caps.get("recommended_mode", "cloud")
+            if effective_mode == "none":
+                return json.dumps({
+                    "success": False,
+                    "error": "No inference backends available",
+                    "tool": "craft",
+                    "recovery_hint": caps.get("reason", "Start Ollama or configure LiteLLM"),
+                })
+
         if effective_mode in ("local", "hybrid"):
             from loom.local_agent import LocalAgent
             memory, _ = _get_engines()
@@ -726,10 +742,30 @@ async def local_agent_task(
     """Run a local Ollama agent with tool-calling to autonomously accomplish tasks.
     The agent can read, edit, search files, and run PowerShell commands.
     Set max_turns to control depth (5=quick, 15=normal, 30=thorough).
-    Set hybrid=true to use local Ollama for tool-calling + cloud (Azure/Gemini via LiteLLM) for analysis.
+    When hybrid is not explicitly set, auto-detects whether cloud is available and enables hybrid mode.
     Override tool_model/analysis_model for different models."""
     try:
-        if tool_model or analysis_model or max_turns != 15 or hybrid:
+        # Auto-detect hybrid mode and best models when not explicitly configured
+        effective_hybrid = hybrid
+        effective_tool_model = tool_model
+        effective_analysis_model = analysis_model
+
+        if not hybrid and not tool_model and not analysis_model:
+            runtime = await get_runtime()
+            caps = runtime._cache
+            if caps.get("cloud_available") and caps.get("local_available"):
+                effective_hybrid = True
+            if not tool_model:
+                effective_tool_model = runtime.get_best_tool_model()
+            if not analysis_model:
+                effective_analysis_model = runtime.get_best_analysis_model()
+
+        needs_custom = (
+            effective_tool_model or effective_analysis_model
+            or max_turns != 15 or effective_hybrid
+        )
+
+        if needs_custom:
             from loom.local_agent import LocalAgent
             memory, _ = _get_engines()
             engine = _get_local_engine()
@@ -738,10 +774,10 @@ async def local_agent_task(
                 inference_engine=engine,
                 ps_manager=manager,
                 memory_engine=memory,
-                tool_model=tool_model or None,
-                analysis_model=analysis_model or None,
+                tool_model=effective_tool_model or None,
+                analysis_model=effective_analysis_model or None,
                 max_turns=max_turns,
-                hybrid=hybrid,
+                hybrid=effective_hybrid,
             )
         else:
             agent = _get_local_agent()
@@ -749,6 +785,21 @@ async def local_agent_task(
         return json.dumps(result, default=str)
     except Exception as e:
         return _error_response("local_agent_task", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
+
+
+@mcp.tool()
+async def get_runtime_capabilities() -> str:
+    """Detect available runtime services and return capability map as JSON.
+    Shows: Ollama status + models, LiteLLM status, PowerShell, Neo4j, Nia,
+    recommended execution mode, best tool model, best analysis model."""
+    try:
+        runtime = await get_runtime()
+        caps = dict(runtime._cache)
+        caps["best_tool_model"] = runtime.get_best_tool_model()
+        caps["best_analysis_model"] = runtime.get_best_analysis_model()
+        return json.dumps(caps, default=str)
+    except Exception as e:
+        return _error_response("get_runtime_capabilities", e, _RECOVERY_HINTS.get(type(e).__name__, ""))
 
 
 if __name__ == "__main__":

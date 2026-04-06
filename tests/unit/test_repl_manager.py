@@ -644,6 +644,119 @@ class TestEdgeCases:
         assert manager._check_path_safety("Write-Host 'Hola mundo'") is True
         assert manager._check_dangerous_commands("Write-Host 'Hola mundo'") is None
 
+    async def test_safety_timing_in_result(self, manager, mock_kan, mock_local_engine):
+        """Successful execution results should include a safety_timing dict."""
+        mock_kan.score_risk = AsyncMock(return_value={
+            "risk_level": "safe",
+            "risk_score": 0.1,
+            "model": "kan",
+        })
+
+        mock_proc = AsyncMock()
+        mock_proc.returncode = None
+        mock_proc.pid = 777
+        mock_proc.stdin = MagicMock()
+        mock_proc.stdin.write = MagicMock()
+        mock_proc.stdin.drain = AsyncMock()
+
+        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+             patch.object(manager, "_send_and_receive", return_value=("output", "")), \
+             patch.object(manager, "_log_command", return_value=None):
+            manager._sessions["test"] = {
+                "process": mock_proc,
+                "created": None,
+                "command_count": 0,
+                "last_command": None,
+            }
+
+            result = await manager._execute_inner(
+                script="Write-Host 'hello'",
+                session_id="test",
+                timeout=30,
+                structured=True,
+            )
+
+        assert "safety_timing" in result, "Result should contain safety_timing dict"
+        assert isinstance(result["safety_timing"], dict)
+
+    async def test_safety_timing_has_kan_ms(self, manager, mock_kan, mock_local_engine):
+        """safety_timing dict should contain a kan_ms key with a non-negative integer value."""
+        mock_kan.score_risk = AsyncMock(return_value={
+            "risk_level": "safe",
+            "risk_score": 0.1,
+            "model": "kan",
+        })
+
+        mock_proc = AsyncMock()
+        mock_proc.returncode = None
+        mock_proc.pid = 778
+        mock_proc.stdin = MagicMock()
+        mock_proc.stdin.write = MagicMock()
+        mock_proc.stdin.drain = AsyncMock()
+
+        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+             patch.object(manager, "_send_and_receive", return_value=("output", "")), \
+             patch.object(manager, "_log_command", return_value=None):
+            manager._sessions["test"] = {
+                "process": mock_proc,
+                "created": None,
+                "command_count": 0,
+                "last_command": None,
+            }
+
+            result = await manager._execute_inner(
+                script="Get-Date",
+                session_id="test",
+                timeout=30,
+                structured=True,
+            )
+
+        timing = result["safety_timing"]
+        assert "kan_ms" in timing, "safety_timing should contain kan_ms"
+        assert isinstance(timing["kan_ms"], int)
+        assert timing["kan_ms"] >= 0
+
+    async def test_elevated_command_logs_timing(self, manager, mock_kan, mock_local_engine):
+        """Elevated commands that go through Gemma review should track gemma_review_ms in safety_timing."""
+        mock_kan.score_risk = AsyncMock(return_value={
+            "risk_level": "safe",
+            "risk_score": 0.1,
+            "model": "kan",
+        })
+        mock_local_engine.review_powershell_command = AsyncMock(return_value={
+            "risk_level": "safe",
+            "reason": "Legitimate use",
+        })
+
+        mock_proc = AsyncMock()
+        mock_proc.returncode = None
+        mock_proc.pid = 779
+        mock_proc.stdin = MagicMock()
+        mock_proc.stdin.write = MagicMock()
+        mock_proc.stdin.drain = AsyncMock()
+
+        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+             patch.object(manager, "_send_and_receive", return_value=("output", "")), \
+             patch.object(manager, "_log_command", return_value=None):
+            manager._sessions["test"] = {
+                "process": mock_proc,
+                "created": None,
+                "command_count": 0,
+                "last_command": None,
+            }
+
+            result = await manager._execute_inner(
+                script="Invoke-Expression 'Get-Date'",
+                session_id="test",
+                timeout=30,
+                structured=True,
+            )
+
+        timing = result["safety_timing"]
+        assert "gemma_review_ms" in timing, "Elevated command should have gemma_review_ms in safety_timing"
+        assert isinstance(timing["gemma_review_ms"], int)
+        assert timing["gemma_review_ms"] >= 0
+
     async def test_timeout_returns_error(self, manager, mock_kan, mock_local_engine):
         """Should return timeout error when command exceeds timeout."""
         mock_kan.score_risk = AsyncMock(return_value={

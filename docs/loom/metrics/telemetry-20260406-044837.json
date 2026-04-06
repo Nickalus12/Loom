@@ -1,0 +1,11 @@
+{
+  "uptime_seconds": 2.64,
+  "counters": {
+    "agent_tasks_total": 1.0,
+    "memory_searches": 1.0
+  },
+  "labeled_counters": {},
+  "durations": {},
+  "waterfall": [],
+  "saved_at": "2026-04-06T04:48:37.584666+00:00"
+}

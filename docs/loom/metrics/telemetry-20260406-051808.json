@@ -1,0 +1,82 @@
+{
+  "uptime_seconds": 5.494,
+  "counters": {
+    "agent_tasks_total": 2.0,
+    "memory_searches": 2.0,
+    "agent_model_calls": 30.0,
+    "model_calls_total": 30.0,
+    "model_tokens_input": 3825.0,
+    "agent_tasks_completed": 2.0,
+    "agent_turns_total": 30.0
+  },
+  "labeled_counters": {
+    "agent_model_calls": {
+      "{\"model\": \"qwen3:4b\"}": 30.0
+    },
+    "model_calls_total": {
+      "{\"provider\": \"ollama\"}": 30.0
+    },
+    "model_call_duration_seconds": {
+      "{\"provider\": \"ollama\"}": 30.0
+    }
+  },
+  "durations": {
+    "model_call_duration_seconds": {
+      "count": 30,
+      "min": 0.0,
+      "max": 0.002,
+      "avg": 0.0,
+      "p95": 0.002,
+      "total": 0.008
+    },
+    "agent_duration_seconds": {
+      "count": 2,
+      "min": 0.044,
+      "max": 0.054,
+      "avg": 0.049,
+      "p95": 0.054,
+      "total": 0.099
+    }
+  },
+  "waterfall": [
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "agent_run",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    },
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "synthesize_agent",
+          "children": [],
+          "duration_ms": 0
+        }
+      ],
+      "duration_ms": 0
+    }
+  ],
+  "saved_at": "2026-04-06T05:18:08.716658+00:00"
+}
