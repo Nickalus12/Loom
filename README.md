@@ -12,7 +12,7 @@
 
 **Local-first AI agents with tool-calling, 3-tier safety, and knowledge graph memory**
 
-[![Version](https://img.shields.io/badge/version-6.0.0-blueviolet?style=for-the-badge)](https://github.com/Nickalus12/Loom/releases)
+[![Silk 1.0](https://img.shields.io/badge/Silk-1.0-C9A96E?style=for-the-badge&labelColor=2D1B0E)](https://github.com/Nickalus12/Loom/releases)
 [![Tests](https://img.shields.io/badge/tests-684_passing-brightgreen?style=for-the-badge)](tests/)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
@@ -493,6 +493,20 @@ loom test
 # or
 pytest tests/unit/ -v
 ```
+
+---
+
+## Versioning
+
+Loom uses **fabric-based versioning** — each major release is named after a textile, reflecting increasing complexity and refinement.
+
+| Version | Codename | Milestone |
+|---------|----------|-----------|
+| **Silk.1.0** | Silk | Dynamic Agent Fabric, trait composition, Nia + Context7 grounding, 49 MCP tools, 684 tests |
+
+Future codenames: **Velvet**, **Cashmere**, **Brocade**, **Tapestry**, **Organza** ...
+
+Format: `{Codename}.{Major}.{Minor}` — e.g., `Silk.1.0`, `Silk.1.1`, `Velvet.1.0`
 
 ---
 

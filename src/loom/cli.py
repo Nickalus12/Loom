@@ -23,6 +23,8 @@ from loom.display import (
 )
 
 
+LOOM_VERSION = "Silk.1.0"
+
 def _get_banner() -> str:
     return (
         "[bold magenta]"
@@ -31,7 +33,7 @@ def _get_banner() -> str:
         " | |   / _ \\ / _ \\| '_ ` _ \\ \n"
         " | |__| (_) | (_) | | | | | |\n"
         " |_____\\___/ \\___/|_| |_| |_|\n"
-        "[/][dim] Multi-agent orchestration platform[/]\n"
+        f"[/][bold #C9A96E] {LOOM_VERSION}[/] [dim]Multi-agent orchestration platform[/]\n"
     )
 
 

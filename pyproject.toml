@@ -1,7 +1,8 @@
 [project]
 name = "loom"
-version = "0.1.0"
-description = "Multi-agent swarm orchestrator for Claude Code and Gemini CLI"
+version = "1.0.0"
+codename = "Silk"
+description = "Multi-agent orchestration platform with dynamic trait-based agent synthesis, local Ollama inference, 3-tier safety, and knowledge graph memory"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

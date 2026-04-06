@@ -1,7 +1,7 @@
 {
   "name": "loom",
-  "version": "2.0.0",
-  "description": "Multi-agent orchestration platform \u2014 22 specialists, local Ollama agents with tool-calling, 3-tier safety pipeline, Graphiti memory, and standalone review/debug/security/perf/seo/a11y/compliance commands",
+  "version": "Silk.1.0",
+  "description": "Multi-agent orchestration platform \u2014 Dynamic Agent Fabric with 36 composable traits, 4 archetypes, local Ollama agents with tool-calling, 3-tier safety pipeline, Nia + Context7 grounding, Graphiti memory, and 49 MCP tools",
   "contextFileName": "GEMINI.md",
   "excludeTools": ["run_shell_command"],
   "plan": {
