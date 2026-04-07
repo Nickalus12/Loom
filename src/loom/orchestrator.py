@@ -114,11 +114,13 @@ class LoomOrchestrator:
         call_start = time.monotonic()
         self._tel_inc("orch_agent_calls_total", agent=agent_name, tier=config.tier)
         try:
+            # Cap dispatch timeout at 45s — prevents 10min hangs on slow/dead endpoints
+            dispatch_timeout = min(config.timeout_mins * 60, 45)
             response = await self._client.chat.completions.create(
                 model=model_string,
                 messages=messages,
                 temperature=config.temperature,
-                timeout=config.timeout_mins * 60,
+                timeout=dispatch_timeout,
             )
             result = response.choices[0].message.content
             if not result:

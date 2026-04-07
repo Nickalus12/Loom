@@ -134,12 +134,12 @@ class TestDispatchAgent:
         assert call_kwargs["temperature"] == 0.3
 
     @pytest.mark.asyncio
-    async def test_dispatch_uses_agent_timeout(self, orchestrator):
-        """Should convert timeout_mins to seconds."""
+    async def test_dispatch_uses_capped_timeout(self, orchestrator):
+        """Should cap timeout at 45s even if agent config says 10 minutes."""
         await orchestrator.dispatch_agent("coder", "Build it.")
 
         call_kwargs = orchestrator._client.chat.completions.create.call_args.kwargs
-        assert call_kwargs["timeout"] == 600  # 10 mins * 60
+        assert call_kwargs["timeout"] == 45  # capped for fast failure
 
     @pytest.mark.asyncio
     async def test_dispatch_uses_methodology_as_system_prompt(self, orchestrator):

@@ -57,7 +57,7 @@ class _BackendCircuitBreaker:
 class RuntimeCapabilities:
     """Detects and caches available runtime services."""
 
-    _CACHE_TTL: float = 300.0  # re-probe after 5 minutes
+    _CACHE_TTL: float = 60.0  # re-probe after 60 seconds
 
     def __init__(self) -> None:
         self._cache: dict[str, Any] = {}
@@ -76,11 +76,18 @@ class RuntimeCapabilities:
         if self._checked and (_time.monotonic() - self._checked_at) < self._CACHE_TTL:
             return self._cache
 
+        # Probe all services IN PARALLEL — saves 10-15s vs sequential
+        ollama_r, litellm_r, neo4j_r = await asyncio.gather(
+            self._check_ollama(),
+            self._check_litellm(),
+            self._check_neo4j(),
+            return_exceptions=True,
+        )
         caps: dict[str, Any] = {
-            "ollama": await self._check_ollama(),
-            "litellm": await self._check_litellm(),
+            "ollama": ollama_r if not isinstance(ollama_r, BaseException) else {"available": False},
+            "litellm": litellm_r if not isinstance(litellm_r, BaseException) else {"available": False},
             "powershell": self._check_powershell(),
-            "neo4j": await self._check_neo4j(),
+            "neo4j": neo4j_r if not isinstance(neo4j_r, BaseException) else {"available": False},
             "nia": bool(os.getenv("NIA_API_KEY")),
         }
 

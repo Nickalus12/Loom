@@ -90,25 +90,27 @@ def _get_local_engine() -> LocalInferenceEngine:
 
 
 def _get_kan_engine() -> PowerShellKANEngine:
-    """Lazy-initialize the KAN engine on first use."""
+    """Lazy-initialize the KAN engine — no Neo4j dependency."""
     global _kan_engine
     if _kan_engine is None:
-        memory, _ = _get_engines()
-        _kan_engine = PowerShellKANEngine(memory_engine=memory)
+        _kan_engine = PowerShellKANEngine()
     return _kan_engine
 
 
 def _get_ps_manager() -> PowerShellREPLManager:
-    """Lazy-initialize the PowerShell REPL manager on first use."""
+    """Lazy-initialize PS manager — only needs KAN and local engine, NOT memory."""
     global _ps_manager
     if _ps_manager is None:
-        memory, _ = _get_engines()
-        local = _get_local_engine()
         kan = _get_kan_engine()
+        # Local engine is optional — PS tools work without Gemma safety review
+        try:
+            local = _get_local_engine()
+        except Exception:
+            local = None
         _ps_manager = PowerShellREPLManager(
             project_root=_project_root,
             local_engine=local,
-            memory_engine=memory,
+            memory_engine=None,  # PS tools don't need Graphiti
             kan_engine=kan,
         )
     return _ps_manager
