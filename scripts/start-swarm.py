@@ -77,11 +77,29 @@ def validate_environment(root: Path) -> list[str]:
 
 
 def load_dotenv(root: Path) -> None:
-    """Load .env file from Loom root — keys like LITELLM_MASTER_KEY, API keys, etc."""
-    env_file = root / ".env"
-    if not env_file.exists():
-        return
+    """Load .env from multiple search paths — API keys, LITELLM_MASTER_KEY, etc.
+
+    Search order (first found wins):
+    1. Loom root (plugin dir or dev dir)
+    2. ~/.loom/.env (user-global config)
+    3. User home .env
+    """
+    search_paths = [
+        root / ".env",
+        Path.home() / ".loom" / ".env",
+        Path.home() / ".env",
+    ]
+    for env_file in search_paths:
+        if env_file.exists():
+            _parse_env_file(env_file)
+            return
+    print("[loom-swarm] WARN: No .env file found — cloud features may be unavailable", file=sys.stderr)
+
+
+def _parse_env_file(env_file: Path) -> None:
+    """Parse a single .env file into os.environ."""
     try:
+        loaded = 0
         for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if not line or line.startswith("#"):
@@ -91,11 +109,13 @@ def load_dotenv(root: Path) -> None:
             key, _, value = line.partition("=")
             key = key.strip()
             value = value.strip().strip('"').strip("'")
-            # Only set if not already in environment (env vars override .env)
             if key and not os.getenv(key):
                 os.environ[key] = value
-    except Exception:
-        pass  # .env loading is best-effort
+                loaded += 1
+        if loaded:
+            print(f"[loom-swarm] Loaded {loaded} env vars from {env_file}", file=sys.stderr)
+    except Exception as exc:
+        print(f"[loom-swarm] WARN: Failed to read {env_file}: {exc}", file=sys.stderr)
 
 
 def main():

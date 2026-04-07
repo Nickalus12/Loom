@@ -65,10 +65,15 @@ _local_agent: LocalAgent | None = None
 
 
 def _get_engines() -> tuple[LoomSwarmMemory, LoomOrchestrator]:
-    """Lazy-initialize engines on first use. Retries if services weren't ready earlier."""
+    """Lazy-initialize engines on first use. Graceful if Neo4j/LiteLLM missing."""
     global _memory_engine, _swarm_orchestrator
     if _memory_engine is None or _swarm_orchestrator is None:
-        _memory_engine = LoomSwarmMemory()
+        try:
+            _memory_engine = LoomSwarmMemory()
+        except Exception as exc:
+            logger.warning("Memory engine init failed (%s) — running without memory", exc)
+            _memory_engine = LoomSwarmMemory(graphiti=None)
+            _memory_engine.memory = None  # ensure offline mode
         registry = AgentRegistry()
         _swarm_orchestrator = LoomOrchestrator(_memory_engine, registry)
     return _memory_engine, _swarm_orchestrator

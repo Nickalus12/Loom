@@ -53,9 +53,13 @@ class LoomSwarmMemory:
             neo4j_password = os.getenv("NEO4J_PASSWORD")
 
             if not litellm_key:
-                raise ValueError("LITELLM_MASTER_KEY environment variable is missing")
+                logger.warning("LITELLM_MASTER_KEY not set — memory engine running in offline mode")
+                self.memory = None
+                return
             if not neo4j_password:
-                raise ValueError("NEO4J_PASSWORD environment variable is missing")
+                logger.warning("NEO4J_PASSWORD not set — memory engine running in offline mode")
+                self.memory = None
+                return
 
             llm_config = LLMConfig(
                 base_url="http://localhost:4000/v1",
@@ -86,15 +90,15 @@ class LoomSwarmMemory:
         self.ast_parser = ASTParser()
 
     async def build_indices_and_constraints(self):
-        """
-        Ensures indices and constraints are created in Neo4j.
-        """
+        """Ensures indices and constraints are created in Neo4j."""
+        if self.memory is None:
+            return
         await self.memory.build_indices_and_constraints()
 
     async def close(self):
-        """
-        Closes the underlying Neo4j driver.
-        """
+        """Closes the underlying Neo4j driver."""
+        if self.memory is None:
+            return
         await self.memory.close()
 
     async def get_context_for_coder(self, target_file: str) -> dict:
