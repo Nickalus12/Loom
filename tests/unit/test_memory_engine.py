@@ -21,18 +21,18 @@ class TestConstructorInjection:
         mem = LoomSwarmMemory(graphiti=mock_graphiti)
         assert mem.memory is mock_graphiti
 
-    def test_constructor_without_injection_requires_env(self):
-        """Should raise ValueError when no graphiti param and env vars are missing."""
+    def test_constructor_without_env_degrades_gracefully(self):
+        """Should set memory=None (offline mode) when env vars are missing — not crash."""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="LITELLM_MASTER_KEY"):
-                LoomSwarmMemory()
+            mem = LoomSwarmMemory()
+            assert mem.memory is None
 
-    def test_constructor_missing_neo4j_password(self):
-        """Should raise ValueError when LITELLM_MASTER_KEY is set but NEO4J_PASSWORD is not."""
+    def test_constructor_missing_neo4j_degrades_gracefully(self):
+        """Should set memory=None when LITELLM_MASTER_KEY is set but NEO4J_PASSWORD is not."""
         env = {"LITELLM_MASTER_KEY": "test-key"}
         with patch.dict("os.environ", env, clear=True):
-            with pytest.raises(ValueError, match="NEO4J_PASSWORD"):
-                LoomSwarmMemory()
+            mem = LoomSwarmMemory()
+            assert mem.memory is None
 
 
 class TestBuildIndicesAndConstraints:
