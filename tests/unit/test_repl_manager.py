@@ -91,9 +91,10 @@ class TestSessionManagement:
         with patch.object(manager, "_find_pwsh", return_value="pwsh"), \
              patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
              patch.object(manager, "_read_until_marker", return_value=""):
-            proc = await manager._get_or_create_session("test_session")
+            session, created = await manager._get_or_create_session("test_session")
 
-        assert proc is mock_proc
+        assert session["process"] is mock_proc
+        assert created is True
         assert "test_session" in manager._sessions
         assert manager._sessions["test_session"]["command_count"] == 0
 
@@ -109,9 +110,10 @@ class TestSessionManagement:
             "last_command": None,
         }
 
-        proc = await manager._get_or_create_session("reuse_session")
+        session, created = await manager._get_or_create_session("reuse_session")
 
-        assert proc is mock_proc
+        assert session["process"] is mock_proc
+        assert created is False
 
     async def test_close_session_terminates_process(self, manager):
         """Should remove session from _sessions and write exit to stdin."""
@@ -413,7 +415,8 @@ class TestSafetyPipeline:
         mock_proc.stdin.write = MagicMock()
         mock_proc.stdin.drain = AsyncMock()
 
-        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+        _mock_session = {"process": mock_proc, "pipe": None, "created": None, "command_count": 0, "last_command": None}
+        with patch.object(manager, "_get_or_create_session", return_value=(_mock_session, False)), \
              patch.object(manager, "_send_and_receive", return_value=("output", "")), \
              patch.object(manager, "_log_command", return_value=None):
             manager._sessions["test"] = {
@@ -468,7 +471,8 @@ class TestSafetyPipeline:
         mock_proc.stdin.write = MagicMock()
         mock_proc.stdin.drain = AsyncMock()
 
-        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+        _mock_session = {"process": mock_proc, "pipe": None, "created": None, "command_count": 0, "last_command": None}
+        with patch.object(manager, "_get_or_create_session", return_value=(_mock_session, False)), \
              patch.object(manager, "_send_and_receive", return_value=("output", "")), \
              patch.object(manager, "_log_command", return_value=None):
             manager._sessions["test"] = {
@@ -659,7 +663,8 @@ class TestEdgeCases:
         mock_proc.stdin.write = MagicMock()
         mock_proc.stdin.drain = AsyncMock()
 
-        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+        _mock_session = {"process": mock_proc, "pipe": None, "created": None, "command_count": 0, "last_command": None}
+        with patch.object(manager, "_get_or_create_session", return_value=(_mock_session, False)), \
              patch.object(manager, "_send_and_receive", return_value=("output", "")), \
              patch.object(manager, "_log_command", return_value=None):
             manager._sessions["test"] = {
@@ -694,7 +699,8 @@ class TestEdgeCases:
         mock_proc.stdin.write = MagicMock()
         mock_proc.stdin.drain = AsyncMock()
 
-        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+        _mock_session = {"process": mock_proc, "pipe": None, "created": None, "command_count": 0, "last_command": None}
+        with patch.object(manager, "_get_or_create_session", return_value=(_mock_session, False)), \
              patch.object(manager, "_send_and_receive", return_value=("output", "")), \
              patch.object(manager, "_log_command", return_value=None):
             manager._sessions["test"] = {
@@ -735,7 +741,8 @@ class TestEdgeCases:
         mock_proc.stdin.write = MagicMock()
         mock_proc.stdin.drain = AsyncMock()
 
-        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+        _mock_session = {"process": mock_proc, "pipe": None, "created": None, "command_count": 0, "last_command": None}
+        with patch.object(manager, "_get_or_create_session", return_value=(_mock_session, False)), \
              patch.object(manager, "_send_and_receive", return_value=("output", "")), \
              patch.object(manager, "_log_command", return_value=None):
             manager._sessions["test"] = {
@@ -769,7 +776,8 @@ class TestEdgeCases:
         mock_proc.returncode = None
         mock_proc.pid = 555
 
-        with patch.object(manager, "_get_or_create_session", return_value=mock_proc), \
+        _mock_session = {"process": mock_proc, "pipe": None, "created": None, "command_count": 0, "last_command": None}
+        with patch.object(manager, "_get_or_create_session", return_value=(_mock_session, False)), \
              patch.object(manager, "_send_and_receive", side_effect=asyncio.TimeoutError()), \
              patch.object(manager, "close_session", return_value=True):
             manager._sessions["test"] = {

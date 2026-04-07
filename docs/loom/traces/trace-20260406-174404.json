@@ -1,0 +1,95 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "You are orchestrating a multi-phase engineering task. First analyze the architec",
+      "ts_ms": 0,
+      "duration_ms": 85387,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 15
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 886,
+      "duration_ms": 8263,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "find_files",
+      "ts_ms": 9146,
+      "duration_ms": 3,
+      "data": {
+        "args": {
+          "pattern": "*.*"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 9149,
+      "duration_ms": 25563,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "run_powershell",
+      "ts_ms": 33962,
+      "duration_ms": 750,
+      "data": {
+        "args": {
+          "command": "Get-ChildItem ."
+        }
+      },
+      "parent": 3
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 3",
+      "ts_ms": 34712,
+      "duration_ms": 12387,
+      "data": {
+        "turn": 3
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file",
+      "ts_ms": 46979,
+      "duration_ms": 120,
+      "data": {
+        "args": {
+          "path": "ARCHITECTURE.md"
+        }
+      },
+      "parent": 5
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 4",
+      "ts_ms": 47099,
+      "duration_ms": 25762,
+      "data": {
+        "turn": 4
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 8,
+  "total_duration_ms": 85388,
+  "saved_at": "2026-04-06T17:44:04.349103+00:00"
+}

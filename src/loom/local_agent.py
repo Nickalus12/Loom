@@ -1,4 +1,8 @@
-"""Local Ollama agent with tool-calling, caching, git safety, and Graphiti memory."""
+"""LoomAgent — unified agent with tool-calling, caching, git safety, and Graphiti memory.
+
+Runs local Ollama models for tool-calling and optionally cloud models (via LiteLLM)
+for analysis in hybrid mode. Previously named LocalAgent.
+"""
 
 import asyncio
 import hashlib
@@ -25,14 +29,58 @@ try:
 except Exception:
     _TRACER_AVAILABLE = False
 
-_DEFAULT_SYSTEM_PROMPT = (
-    "You are a local code assistant with access to tools for reading, writing, "
-    "editing, and searching code files, and running PowerShell commands. You work "
-    "inside the project directory. Use tools to accomplish the task. Be precise "
-    "and concise. When reviewing code, cite specific line numbers. When modifying "
-    "files, prefer edit_file over write_file for targeted changes. Read files "
-    "before editing them."
-)
+_DEFAULT_SYSTEM_PROMPT = """\
+You are an elite autonomous engineering agent operating inside the Loom project system. \
+You have full access to the entire codebase and all tools needed to accomplish any task \
+completely and independently — no hedging, no asking for permission, no stopping halfway.
+
+## Mindset
+- Complete every task end-to-end. If a task requires reading 10 files, reading them. \
+If it requires writing 5 files, write all 5.
+- Always read before you edit. Understand the existing code, patterns, and conventions \
+before making changes. New code must be indistinguishable in style from existing code.
+- Verify your own work. After writing or editing, re-read the result. Run tests or \
+builds when relevant using run_powershell.
+
+## Python/File Tools
+- `read_file(path)` — Read a file with line numbers
+- `read_file_lines(path, start_line, end_line)` — Read a specific range from a large file
+- `edit_file(path, old_text, new_text)` — Targeted in-place replacement (prefer over write_file)
+- `write_file(path, content)` — Create or fully rewrite a file
+- `search_code(query, path, include)` — Regex search across the codebase
+- `find_files(pattern, path)` — Find files by glob pattern
+
+## PowerShell Tools (via run_powershell)
+Use `run_powershell` to call any of these specialized Loom functions:
+
+**File ops:**
+- `Read-LoomFile 'path'` — read with line numbers
+- `Write-LoomFile 'path' 'content'` — write file
+- `Edit-LoomFile 'path' -OldText 'x' -NewText 'y' [-Regex] [-All]` — in-place patch
+- `Search-LoomCode 'pattern' [-Path dir] [-Include *.py]` — ripgrep-backed search
+- `Find-LoomFiles '*.py' [-Path dir]` — fast file discovery
+
+**Git:**
+- `Get-LoomGitStatus` · `Get-LoomGitDiff [-Staged] [-Path p]` · `Get-LoomGitLog [-Limit n]`
+- `New-LoomGitCommit 'message'` · `Save-LoomGitStash` · `Restore-LoomGitStash`
+
+**System:**
+- `Get-LoomGpuStatus` · `Get-LoomDiskUsage` · `Get-LoomMemoryUsage`
+- `Get-LoomPortStatus [-Ports @(8080,11434,...)]` — which ports are listening and who owns them
+- `Get-LoomProcessInfo [-Name x] [-Id n] [-IncludeThreads]` — process details
+
+**Network (localhost/private only):**
+- `Invoke-LoomHttpRequest 'http://localhost:PORT/path' [-Method POST] [-Body '...']`
+
+**Build & Test:**
+- `Invoke-LoomBuild` · `Invoke-LoomTest [-Filter 'pattern']`
+
+## Rules
+- Cite specific file:line when referencing code
+- For targeted changes use edit_file or Edit-LoomFile, not full rewrites
+- When a task involves multiple files, work through all of them — do not stop after the first
+- Never leave placeholder TODO comments or incomplete implementations
+"""
 
 _DEFAULT_MAX_RESULT_CHARS = 8000
 
@@ -52,7 +100,7 @@ class AgentResult(TypedDict):
     truncated: bool
 
 
-class LocalAgent:
+class LoomAgent:
     """Multi-turn agent loop for local Ollama models with tool calling."""
 
     _AGENT_TOOLS: list[dict[str, Any]] = [
@@ -199,15 +247,24 @@ class LocalAgent:
             "function": {
                 "name": "run_powershell",
                 "description": (
-                    "Execute a PowerShell command. Use for git, tests, builds, "
-                    "or any shell operation."
+                    "Execute a PowerShell command in a persistent REPL session. "
+                    "Use for: git operations, running tests/builds, file system ops, "
+                    "process/port inspection, HTTP requests to local services, and "
+                    "any shell operation. Loom functions available: Read-LoomFile, "
+                    "Write-LoomFile, Edit-LoomFile, Search-LoomCode, Find-LoomFiles, "
+                    "Get-LoomGitStatus/Diff/Log, New-LoomGitCommit, Save/Restore-LoomGitStash, "
+                    "Get-LoomGpuStatus, Get-LoomDiskUsage, Get-LoomMemoryUsage, "
+                    "Get-LoomPortStatus, Get-LoomProcessInfo, Invoke-LoomHttpRequest, "
+                    "Invoke-LoomBuild, Invoke-LoomTest. "
+                    "State persists across calls — variables and functions defined in "
+                    "one call are available in subsequent calls."
                 ),
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "command": {
                             "type": "string",
-                            "description": "PowerShell command to execute",
+                            "description": "PowerShell command or script to execute",
                         },
                     },
                     "required": ["command"],
@@ -486,6 +543,7 @@ class LocalAgent:
                 })
 
                 tool_elapsed_ms = int((time.monotonic() - tool_start) * 1000)
+                self._telem_observe("agent_tool_latency_seconds", tool_elapsed_ms / 1000, tool=tool_name)
                 self._trace_end(tool_span)
                 if was_cached:
                     self._trace("cache_hit", tool_name)
@@ -520,7 +578,12 @@ class LocalAgent:
                 turn_total,
             )
         else:
-            final_response = messages[-1].get("content", "Max turns reached")
+            # Find last assistant message — don't return tool output as final answer
+            final_response = "Max turns reached without final response."
+            for msg in reversed(messages):
+                if msg.get("role") == "assistant" and msg.get("content"):
+                    final_response = msg["content"]
+                    break
             truncated = True
 
         if self._tool_model != self._analysis_model and not truncated:
@@ -601,6 +664,9 @@ class LocalAgent:
         input_chars = sum(len(m.get("content", "")) for m in messages)
         logger.info("[LLM] Calling %s via %s (%d msgs, ~%d chars)...", model, provider, msg_count, input_chars)
 
+        llm_span = self._trace_begin("llm_call", model,
+            provider=provider, msgs=msg_count, input_chars=input_chars)
+
         call_start = time.monotonic()
         try:
             result = await asyncio.wait_for(
@@ -610,16 +676,42 @@ class LocalAgent:
         except asyncio.TimeoutError:
             logger.error("[LLM] TIMEOUT after 120s waiting for %s (%s)", model, provider)
             self._telem_inc("model_call_errors", provider=provider)
+            self._trace_end(llm_span)
+            self._trace("error", f"timeout:{model}", provider=provider)
             raise
         except Exception:
             logger.error("[LLM] ERROR after %.1fs from %s (%s)", time.monotonic() - call_start, model, provider, exc_info=True)
             self._telem_inc("model_call_errors", provider=provider)
+            self._trace_end(llm_span)
+            self._trace("error", f"error:{model}", provider=provider)
             raise
 
         call_elapsed = time.monotonic() - call_start
         has_tools = bool(result.choices[0].message.tool_calls)
-        logger.info("[LLM] %s (%s) responded in %.1fs (tool_calls=%s)", model, provider, call_elapsed, has_tools)
+
+        usage = getattr(result, "usage", None)
+        if usage:
+            actual_input = getattr(usage, "prompt_tokens", input_est)
+            actual_output = getattr(usage, "completion_tokens", 0)
+        else:
+            actual_input = input_est
+            content = result.choices[0].message.content
+            actual_output = len(content) // 4 if isinstance(content, str) else 0
+
+        logger.info("[LLM] %s (%s) responded in %.1fs | in=%d out=%d tokens | tool_calls=%s",
+                    model, provider, call_elapsed, actual_input, actual_output, has_tools)
         self._telem_observe("model_call_duration_seconds", call_elapsed, provider=provider)
+        self._telem_inc("model_tokens_input_actual", value=float(actual_input), provider=provider)
+        self._telem_inc("model_tokens_output_actual", value=float(actual_output), provider=provider)
+
+        self._trace_end(llm_span)
+        self._trace("llm_response", model,
+            provider=provider,
+            duration_ms=int(call_elapsed * 1000),
+            input_tokens=actual_input,
+            output_tokens=actual_output,
+            has_tools=has_tools,
+        )
 
         content = result.choices[0].message.content
         if isinstance(content, str):
@@ -763,14 +855,11 @@ class LocalAgent:
                         return f"Error reading file: {r.get('error', r.get('errors', 'Unknown error'))}"
                     file_content = r.get("output", "")
 
+                # Strip "    N| " line-number prefixes added by Read-LoomFile
+                import re as _re
+                _LINE_NUM_RE = _re.compile(r"^ *\d+\| ")
                 raw_lines = file_content.splitlines()
-                stripped_lines: list[str] = []
-                for line in raw_lines:
-                    parts = line.split("\t", 1)
-                    if len(parts) == 2 and parts[0].strip().isdigit():
-                        stripped_lines.append(parts[1])
-                    else:
-                        stripped_lines.append(line)
+                stripped_lines: list[str] = [_LINE_NUM_RE.sub("", ln) for ln in raw_lines]
                 raw_content = "\n".join(stripped_lines)
 
                 if old_text not in raw_content:
@@ -845,9 +934,10 @@ class LocalAgent:
             self._cache.pop(key, None)
 
     async def _validate_python_file(self, path: str) -> dict:
+        # Use py_compile with path as argument — avoids shell interpolation entirely
         escaped = path.replace("'", "''")
         result = await self._ps_manager.execute(
-            f"python -c \"import ast; ast.parse(open('{escaped}').read()); print('OK')\"",
+            f"python -m py_compile '{escaped}' 2>&1 && Write-Output 'OK'",
             timeout=15,
         )
         validation = {
@@ -914,3 +1004,7 @@ class LocalAgent:
         except Exception:
             logger.debug("Session memory storage failed", exc_info=True)
             return False
+
+
+# Backward-compatibility alias — existing imports of LocalAgent still work
+LocalAgent = LoomAgent

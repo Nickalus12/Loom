@@ -1,0 +1,106 @@
+{
+  "started_at": "2026-04-06T16:45:23.806101+00:00",
+  "project_root": "D:\\Projects\\Loom",
+  "protocol": "pipe",
+  "cold_start_ms": 1014,
+  "single": {
+    "echo": {
+      "times_ms": [
+        3,
+        2,
+        2,
+        2,
+        2
+      ],
+      "avg_ms": 2,
+      "min_ms": 2,
+      "ps_exec_avg_ms": 1
+    },
+    "read_file": {
+      "times_ms": [
+        74,
+        30,
+        37,
+        27,
+        31
+      ],
+      "avg_ms": 39,
+      "min_ms": 27,
+      "ps_exec_avg_ms": 34
+    },
+    "search_code": {
+      "times_ms": [
+        69,
+        80,
+        68,
+        65,
+        65
+      ],
+      "avg_ms": 69,
+      "min_ms": 65,
+      "ps_exec_avg_ms": 68
+    },
+    "find_files": {
+      "times_ms": [
+        60,
+        63,
+        68,
+        84,
+        86
+      ],
+      "avg_ms": 72,
+      "min_ms": 60,
+      "ps_exec_avg_ms": 71
+    },
+    "git_status": {
+      "times_ms": [
+        125,
+        136,
+        126,
+        121,
+        121
+      ],
+      "avg_ms": 125,
+      "min_ms": 121,
+      "ps_exec_avg_ms": 124
+    },
+    "git_log": {
+      "times_ms": [
+        40,
+        45,
+        35,
+        36,
+        37
+      ],
+      "avg_ms": 38,
+      "min_ms": 35,
+      "ps_exec_avg_ms": 37
+    }
+  },
+  "batch": {
+    "num_commands": 5,
+    "times_ms": [
+      336,
+      395,
+      338,
+      296,
+      300
+    ],
+    "avg_ms": 333,
+    "avg_per_cmd_ms": 66
+  },
+  "sequential_baseline": {
+    "num_commands": 5,
+    "times_ms": [
+      1151,
+      303,
+      3937,
+      317,
+      310
+    ],
+    "avg_ms": 1203,
+    "avg_per_cmd_ms": 240
+  },
+  "batch_speedup": 3.61,
+  "finished_at": "2026-04-06T16:45:35.115375+00:00"
+}

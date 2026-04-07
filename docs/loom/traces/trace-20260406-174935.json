@@ -1,0 +1,96 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Review code",
+      "ts_ms": 0,
+      "duration_ms": 47440,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 15
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 865,
+      "duration_ms": 8558,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "find_files",
+      "ts_ms": 9421,
+      "duration_ms": 2,
+      "data": {
+        "args": {
+          "path": ".",
+          "pattern": "*.*"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 9423,
+      "duration_ms": 19444,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "run_powershell",
+      "ts_ms": 26583,
+      "duration_ms": 2284,
+      "data": {
+        "args": {
+          "command": "Get-ChildItem -Path . -Recurse"
+        }
+      },
+      "parent": 3
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 3",
+      "ts_ms": 28867,
+      "duration_ms": 5798,
+      "data": {
+        "turn": 3
+      },
+      "parent": 0
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file",
+      "ts_ms": 34590,
+      "duration_ms": 75,
+      "data": {
+        "args": {
+          "path": "main.py"
+        }
+      },
+      "parent": 5
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 4",
+      "ts_ms": 34665,
+      "duration_ms": 10246,
+      "data": {
+        "turn": 4
+      },
+      "parent": 0
+    }
+  ],
+  "total_events": 8,
+  "total_duration_ms": 47441,
+  "saved_at": "2026-04-06T17:49:35.808844+00:00"
+}

@@ -10,10 +10,10 @@
 
 ### Multi-Agent Orchestration Platform
 
-**Local-first AI agents with tool-calling, 3-tier safety, and knowledge graph memory**
+**Local-first AI agents with tool-calling, 5-tier neural safety, and knowledge graph memory**
 
 [![Silk 1.0](https://img.shields.io/badge/Silk-1.0-C9A96E?style=for-the-badge&labelColor=2D1B0E)](https://github.com/Nickalus12/Loom/releases)
-[![Tests](https://img.shields.io/badge/tests-684_passing-brightgreen?style=for-the-badge)](tests/)
+[![Tests](https://img.shields.io/badge/tests-788_passing-brightgreen?style=for-the-badge)](tests/)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 
@@ -26,7 +26,7 @@
 
 ---
 
-`36 Traits` | `49 MCP Tools` | `684 Tests` | `3 Safety Tiers` | `13 Commands` | `4 Archetypes` | `Nia + Context7 Grounding`
+`36 Traits` | `49 MCP Tools` | `788 Tests` | `5 Safety Tiers` | `13 Commands` | `4 Archetypes` | `Nia + Context7 Grounding`
 
 </div>
 
@@ -45,7 +45,7 @@ It works as a plugin for both **Gemini CLI** and **Claude Code**, or standalone 
 | **Local-first agents** | Ollama models with real tool-calling | Cloud API wrappers | Cloud API wrappers | Cloud API wrappers |
 | **Safety pipeline** | KAN neural scoring + blocklist + Gemma LLM review | None built-in | None built-in | None built-in |
 | **Dual-platform plugin** | Gemini CLI + Claude Code native | Python SDK only | Python SDK only | Python SDK only |
-| **PowerShell MCP tools** | 42 tools (file, git, build, test, system) | Requires custom tools | Requires custom tools | Requires custom tools |
+| **PowerShell MCP tools** | 47 tools via [PSKit](https://github.com/Nickalus12/pskit) (file, git, build, test, system, network) | Requires custom tools | Requires custom tools | Requires custom tools |
 | **Knowledge graph memory** | Neo4j/Graphiti temporal graph | Vector store only | Vector store only | Vector store only |
 | **Git safety** | Auto-branch before writes, auto-diff | Manual | Manual | Manual |
 | **3-tier model routing** | Azure (heavy) / Gemini (light) / Ollama (local) | Single provider | Single provider | Single provider |
@@ -117,7 +117,7 @@ claude plugin install /path/to/Loom/claude
 | `loom craft "task"` | Multi-agent pipeline (architect + audit + code + review) |
 | `loom safety "cmd"` | Score a PowerShell command's risk level |
 | `loom status` | System health check (Ollama, PowerShell, Neo4j, KAN) |
-| `loom tools` | List all 42 MCP tools |
+| `loom tools` | List all 47 MCP tools |
 | `loom test` | Run the test suite |
 
 ### Plugin Commands (Gemini CLI / Claude Code)
@@ -294,20 +294,22 @@ The switch happens automatically — tool turns use the fast model, the final re
 
 ## Safety Pipeline
 
-Every PowerShell command passes through three layers before execution:
+Every PowerShell command passes through **five layers** before execution:
 
 ```
-Command → KAN Neural Scoring → Blocklist Check → Gemma LLM Review → Execute
-              (instant)           (instant)         (intelligent)
+Command → Result Cache → KAN Neural (24 features) → Blocklist → Path Check → Gemma LLM Review → Execute
+           (instant)        (<1ms)                   (instant)   (instant)     (intelligent)
 ```
 
 | Tier | What Happens | Example |
 |------|-------------|---------|
+| **Result Cache** | Read-only hits served instantly, 30s TTL | `Get-ChildItem`, `git status` — cached |
+| **KAN Neural** | 24-feature risk score in <1ms | Credential patterns, base64, registry access |
 | **Hard Block** | Always denied, no review | `Format-Volume`, `rm -rf`, `Stop-Computer` |
-| **Elevated Review** | Forces Gemma LLM review, blocked if unavailable | `Invoke-WebRequest`, `Start-Process`, `Set-ItemProperty` |
-| **Safe** | KAN scores, skips Gemma if low-risk | `Get-ChildItem`, `Write-Host`, `Read-LoomFile` |
+| **Path Safety** | Blocks writes outside `LOOM_ALLOWED_ROOT` | Writing to `C:\Windows\System32` |
+| **Elevated Review** | Gemma LLM review — **fails open** if Ollama offline | `Invoke-WebRequest`, `Start-Process` |
 
-The KAN engine extracts 16 features from each command (network ops, registry access, deletion patterns, etc.) and scores risk in <1ms. If the score is ambiguous, the command is escalated to Gemma for intelligent review.
+The KAN engine extracts **24 features** from each command (network ops, registry access, credential patterns, base64 obfuscation, scheduled tasks, and more) and scores risk in <1ms. If the score is ambiguous, the command is escalated to Gemma for intelligent review. Safety review failures **fail open** with CAUTION — Gemma being offline never blocks legitimate work.
 
 ---
 
@@ -486,7 +488,7 @@ Loom installs lifecycle hooks that run automatically in both Gemini CLI and Clau
 
 ## Contributing
 
-Contributions welcome. The codebase has 684 tests — run them before submitting:
+Contributions welcome. The codebase has 788 tests — run them before submitting:
 
 ```bash
 loom test
@@ -502,6 +504,7 @@ Loom uses **fabric-based versioning** — each major release is named after a te
 
 | Version | Codename | Milestone |
 |---------|----------|-----------|
+| **Silk.1.1** | Silk | System hardening — 12 critical/high bugs fixed, deploy/optimize plan types, 5-tier safety, 788 tests |
 | **Silk.1.0** | Silk | Dynamic Agent Fabric, trait composition, Nia + Context7 grounding, 49 MCP tools, 684 tests |
 
 Future codenames: **Velvet**, **Cashmere**, **Brocade**, **Tapestry**, **Organza** ...

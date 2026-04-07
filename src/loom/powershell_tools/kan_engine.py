@@ -7,6 +7,7 @@ Uses a small Kolmogorov-Arnold Network to provide:
 """
 
 import asyncio
+import copy
 import logging
 import math
 import re
@@ -53,7 +54,7 @@ _SAFE_PIPELINE_TERMINATORS: frozenset[str] = frozenset({
     "select-string", "group-object", "tee-object",
 })
 
-NUM_FEATURES: int = 16
+NUM_FEATURES: int = 24
 
 _FEATURE_NAMES: tuple[str, ...] = (
     "command_length",
@@ -72,6 +73,15 @@ _FEATURE_NAMES: tuple[str, ...] = (
     "error_redirection",
     "safe_indicators",
     "nesting_complexity",
+    # Extended features (v2)
+    "pipeline_depth",
+    "quoted_string_count",
+    "environment_access",
+    "credential_patterns",
+    "base64_patterns",
+    "compression_patterns",
+    "scheduled_task_ops",
+    "output_redirect",
 )
 
 try:
@@ -116,7 +126,7 @@ class PowerShellKANEngine:
             return
 
         self._model = KAN(
-            layers_hidden=[NUM_FEATURES, 8, 4, 1],
+            layers_hidden=[NUM_FEATURES, 12, 6, 1],
             grid_size=3,
             spline_order=2,
         )
@@ -124,14 +134,40 @@ class PowerShellKANEngine:
 
         if self._model_path.exists():
             try:
-                self._model.load_state_dict(
-                    torch.load(self._model_path, weights_only=True)
-                )
-                logger.info("KAN model loaded from %s", self._model_path)
+                state = torch.load(self._model_path, weights_only=True)
+                migrated = self._migrate_model(state)
+                if migrated is not None:
+                    self._model.load_state_dict(migrated)
+                    logger.info("KAN model loaded from %s", self._model_path)
+                else:
+                    logger.info(
+                        "KAN model architecture changed (16→24 features) — starting fresh"
+                    )
             except Exception as exc:
                 logger.warning("Failed to load KAN model weights: %s", exc)
 
         self._initialized = True
+
+    def _migrate_model(self, state_dict: dict) -> dict | None:
+        """Attempt to load saved weights into current architecture.
+
+        If the saved model has the same architecture, returns it unchanged.
+        If the input dimensions differ (e.g., old 16-feature model), returns None
+        so the caller starts with fresh random weights rather than crashing.
+        """
+        if not _TORCH_AVAILABLE:
+            return None
+        try:
+            # Probe: temporarily load into a fresh model to check compatibility
+            probe = KAN(
+                layers_hidden=[NUM_FEATURES, 12, 6, 1],
+                grid_size=3,
+                spline_order=2,
+            )
+            probe.load_state_dict(state_dict)
+            return state_dict  # architecture matches
+        except Exception:
+            return None  # shape mismatch — caller will use fresh weights
 
     def extract_features(self, command: str) -> list[float]:
         lower = command.lower()
@@ -139,8 +175,17 @@ class PowerShellKANEngine:
         # Smart detection: -WhatIf makes any command a dry run (safe)
         has_whatif = "-whatif" in lower
 
-        # Smart deletion: only flag actual cmdlet-based deletion, not variable names
-        has_real_deletion = bool(re.search(r"(?:^|\||\;)\s*(?:remove-item|ri|del|rm)\s", lower))
+        # Smart deletion: flag all destructive/irreversible system operations
+        has_real_deletion = bool(re.search(
+            r"(?:^|\||\;|\&)\s*(?:"
+            r"remove-item|ri\s|del\s|rm\s|rd\s|"          # file deletion
+            r"format-volume|format-disk|clear-disk|"        # disk destruction
+            r"remove-partition|initialize-disk|"            # partition ops
+            r"stop-computer|restart-computer|"              # system shutdown
+            r"clear-recyclebin|remove-computer"             # other destructive
+            r")\s",
+            lower,
+        ))
 
         # Pipeline safety: if the last command in a pipeline is a safe terminator,
         # the whole pipeline is read-only (e.g., Get-Process | Select-Object Name)
@@ -152,6 +197,51 @@ class PowerShellKANEngine:
         # Count safe indicators (weighted by count, not binary)
         safe_count = sum(1 for s in _SAFE_INDICATORS if s in lower)
         safe_score = min(safe_count / 3.0, 1.0)  # 3+ safe indicators = max safety
+
+        # Extended v2 features
+        subexpr_depth = command.count("$(")
+        pipeline_depth = min((command.count("|") + subexpr_depth) / 8.0, 1.0)
+
+        quoted_count = len(re.findall(r"'[^']*'|\"[^\"]*\"", command))
+        quoted_string_count = min(quoted_count / 10.0, 1.0)
+
+        environment_access = float(bool(
+            re.search(r"\$env:|^\[environment\]::|get-item\s+env:", lower)
+        ))
+
+        credential_patterns = float(bool(
+            re.search(
+                r"password|securestring|get-credential|convertto-securestring|pscredential",
+                lower,
+            )
+        )) if not has_whatif else 0.0
+
+        base64_patterns = float(bool(
+            re.search(
+                r"\[convert\]::(from|to)base64"
+                r"|base64"
+                r"|-enc\s"                          # PowerShell -EncodedCommand shorthand
+                r"|-encodedcommand\s"
+                r"|frombase64string|tobase64string"
+                r"|::load\s*\("                     # Assembly.Load from bytes
+                r"|[0-9a-zA-Z+/]{30,}={0,2}",      # raw Base64 blob (30+ chars)
+                lower,
+            )
+        ))
+
+        compression_patterns = float(bool(
+            re.search(r"compress-archive|expand-archive|zipfile|gzipstream", lower)
+        )) if not has_whatif else 0.0
+
+        scheduled_task_ops = float(bool(
+            re.search(r"register-scheduledtask|new-scheduledtask|set-scheduledtask|schtasks", lower)
+        )) if not has_whatif else 0.0
+
+        # Output redirect: > or >> to a file path (not 2>&1 stderr redirect)
+        output_redirect = float(bool(
+            re.search(r"(?<![=<>!2])\s*>>?\s*['\"\w\$\.]", command)
+            or re.search(r"out-file\s", lower)
+        )) if not has_whatif else 0.0
 
         features: list[float] = [
             min(len(command) / 500.0, 1.0),
@@ -170,6 +260,15 @@ class PowerShellKANEngine:
             float(bool(re.search(r"2>&1|2>\s*\$", command))),
             safe_score + (0.3 if pipeline_is_safe else 0.0) + (0.5 if has_whatif else 0.0),
             min((command.count("{") + command.count("(")) / 10.0, 1.0),
+            # Extended v2
+            pipeline_depth,
+            quoted_string_count,
+            environment_access,
+            credential_patterns,
+            base64_patterns,
+            compression_patterns,
+            scheduled_task_ops,
+            output_redirect,
         ]
 
         return features
@@ -192,6 +291,13 @@ class PowerShellKANEngine:
                 + features[9] * 0.35  # process operations: execution risk
                 + features[15] * 0.1  # nesting complexity
                 - features[14] * 0.2  # safe indicators reduce score
+                # Extended v2
+                + features[19] * 0.5  # credential patterns: very high risk
+                + features[20] * 0.4  # base64: obfuscation indicator
+                + features[22] * 0.35 # scheduled task: persistence mechanism
+                + features[23] * 0.2  # output redirect: potential exfiltration
+                + features[18] * 0.15 # environment access: moderate risk
+                + features[21] * 0.1  # compression: minor risk signal
             )
             risk_score = max(0.0, min(1.0, risk_score))
 
@@ -219,7 +325,55 @@ class PowerShellKANEngine:
         self._command_count += 1
 
         if self._command_count >= self._retrain_threshold:
-            asyncio.get_event_loop().create_task(self.retrain())
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.retrain())
+            except RuntimeError:
+                pass  # no running loop (e.g. called from sync context)
+
+    def _retrain_sync(self, data: list[tuple[list[float], float]]) -> dict[str, Any]:
+        """CPU-bound training — runs on a thread-pool executor to avoid blocking the event loop.
+
+        Trains a *deep copy* of the model so inference on the main thread is never
+        interrupted by in-place gradient operations. The trained weights are then
+        loaded back into the live model under no_grad.
+        """
+        if not _TORCH_AVAILABLE or not self._initialized:
+            return {"success": False, "reason": "PyTorch not available or model not initialized"}
+        try:
+            # Work on an isolated copy — keeps the live model safe for concurrent inference
+            train_model = copy.deepcopy(self._model)
+            train_model.train()
+            optimizer = optim.Adam(train_model.parameters(), lr=0.01)
+
+            X = torch.tensor([d[0] for d in data], dtype=torch.float32)
+            y = torch.tensor([[d[1]] for d in data], dtype=torch.float32)
+
+            losses: list[float] = []
+            for _ in range(100):
+                optimizer.zero_grad()
+                output = train_model(X)
+                loss = F.binary_cross_entropy_with_logits(output, y)
+                loss.backward()
+                optimizer.step()
+                losses.append(loss.item())
+
+            train_model.eval()
+            # Atomically copy trained weights back into the live model
+            with torch.no_grad():
+                for live_p, trained_p in zip(self._model.parameters(), train_model.parameters()):
+                    live_p.copy_(trained_p)
+            torch.save(self._model.state_dict(), self._model_path)
+            return {
+                "success": True,
+                "samples": len(data),
+                "final_loss": losses[-1],
+                "epochs": 100,
+            }
+        except Exception as exc:
+            logger.error("KAN retrain failed: %s", exc, exc_info=True)
+            self._model.eval()
+            return {"success": False, "reason": str(exc)}
 
     async def retrain(self) -> dict[str, Any]:
         if not _TORCH_AVAILABLE or not self._initialized:
@@ -228,45 +382,21 @@ class PowerShellKANEngine:
         if len(self._training_data) < 10:
             return {"success": False, "reason": "insufficient data", "samples": len(self._training_data)}
 
-        try:
-            self._model.train()
-            optimizer = optim.Adam(self._model.parameters(), lr=0.01)
+        # Snapshot training data and reset counters *before* going to thread pool
+        # so new commands accumulate uninterrupted while training runs.
+        data = list(self._training_data)
+        self._training_data.clear()
+        self._command_count = 0
 
-            X = torch.tensor([d[0] for d in self._training_data], dtype=torch.float32)
-            y = torch.tensor([[d[1]] for d in self._training_data], dtype=torch.float32)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, self._retrain_sync, data)
 
-            losses: list[float] = []
-            for _ in range(100):
-                optimizer.zero_grad()
-                output = self._model(X)
-                loss = F.binary_cross_entropy_with_logits(output, y)
-                loss.backward()
-                optimizer.step()
-                losses.append(loss.item())
-
-            self._model.eval()
-            torch.save(self._model.state_dict(), self._model_path)
-
-            sample_count = len(self._training_data)
-            self._training_data.clear()
-            self._command_count = 0
-
+        if result.get("success"):
             logger.info(
                 "KAN model retrained: %d samples, final_loss=%.4f",
-                sample_count,
-                losses[-1],
+                result["samples"], result["final_loss"],
             )
-
-            return {
-                "success": True,
-                "samples": sample_count,
-                "final_loss": losses[-1],
-                "epochs": 100,
-            }
-        except Exception as exc:
-            logger.error("KAN retrain failed: %s", exc, exc_info=True)
-            self._model.eval()
-            return {"success": False, "reason": str(exc)}
+        return result
 
     async def learn_from_history(self, limit: int = 200) -> dict[str, Any]:
         if self._memory is None:
@@ -311,6 +441,8 @@ class PowerShellKANEngine:
             "initialized": self._initialized,
             "model": "kan" if self._initialized else "heuristic",
             "torch_available": _TORCH_AVAILABLE,
+            "num_features": NUM_FEATURES,
+            "architecture": f"[{NUM_FEATURES}, 12, 6, 1]",
             "training_buffer_size": len(self._training_data),
             "commands_since_retrain": self._command_count,
             "retrain_threshold": self._retrain_threshold,

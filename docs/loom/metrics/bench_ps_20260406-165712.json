@@ -1,0 +1,421 @@
+{
+  "started_at": "2026-04-06T16:56:56.866156+00:00",
+  "project_root": "D:\\Projects\\Loom",
+  "protocol": "pipe",
+  "quick_mode": false,
+  "cold_start_ms": 870,
+  "read": {
+    "echo": {
+      "times_ms": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "avg_ms": 1,
+      "med_ms": 1,
+      "min_ms": 1,
+      "max_ms": 1,
+      "ps_exec_avg_ms": 0,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "read_small": {
+      "times_ms": [
+        6,
+        6,
+        6,
+        7,
+        22
+      ],
+      "avg_ms": 9,
+      "med_ms": 6,
+      "min_ms": 6,
+      "max_ms": 22,
+      "ps_exec_avg_ms": 8,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "read_medium": {
+      "times_ms": [
+        32,
+        25,
+        30,
+        22,
+        29
+      ],
+      "avg_ms": 27,
+      "med_ms": 29,
+      "min_ms": 22,
+      "max_ms": 32,
+      "ps_exec_avg_ms": 23,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "search_code": {
+      "times_ms": [
+        93,
+        108,
+        88,
+        77,
+        76
+      ],
+      "avg_ms": 88,
+      "med_ms": 88,
+      "min_ms": 76,
+      "max_ms": 108,
+      "ps_exec_avg_ms": 86,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "find_files": {
+      "times_ms": [
+        70,
+        73,
+        71,
+        67,
+        73
+      ],
+      "avg_ms": 70,
+      "med_ms": 71,
+      "min_ms": 67,
+      "max_ms": 73,
+      "ps_exec_avg_ms": 69,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "git_status": {
+      "times_ms": [
+        128,
+        134,
+        128,
+        112,
+        127
+      ],
+      "avg_ms": 125,
+      "med_ms": 128,
+      "min_ms": 112,
+      "max_ms": 134,
+      "ps_exec_avg_ms": 124,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "git_log_5": {
+      "times_ms": [
+        42,
+        41,
+        39,
+        41,
+        41
+      ],
+      "avg_ms": 40,
+      "med_ms": 41,
+      "min_ms": 39,
+      "max_ms": 42,
+      "ps_exec_avg_ms": 40,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "git_log_20": {
+      "times_ms": [
+        50,
+        50,
+        59,
+        49,
+        50
+      ],
+      "avg_ms": 51,
+      "med_ms": 50,
+      "min_ms": 49,
+      "max_ms": 59,
+      "ps_exec_avg_ms": 50,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    }
+  },
+  "write": {
+    "write_small": {
+      "times_ms": [
+        124,
+        3,
+        5,
+        5,
+        3
+      ],
+      "avg_ms": 28,
+      "med_ms": 5,
+      "min_ms": 3,
+      "max_ms": 124,
+      "ps_exec_avg_ms": 5,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 4,
+      "n": 5
+    },
+    "write_4kb": {
+      "times_ms": [
+        17,
+        5,
+        3,
+        3,
+        6
+      ],
+      "avg_ms": 6,
+      "med_ms": 5,
+      "min_ms": 3,
+      "max_ms": 17,
+      "ps_exec_avg_ms": 3,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 4,
+      "n": 5
+    },
+    "write_64kb": {
+      "times_ms": [
+        8,
+        10,
+        9,
+        9,
+        9
+      ],
+      "avg_ms": 9,
+      "med_ms": 9,
+      "min_ms": 8,
+      "max_ms": 10,
+      "ps_exec_avg_ms": 7,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 4,
+      "n": 5
+    },
+    "write_json": {
+      "times_ms": [
+        11,
+        8,
+        7,
+        8,
+        8
+      ],
+      "avg_ms": 8,
+      "med_ms": 8,
+      "min_ms": 7,
+      "max_ms": 11,
+      "ps_exec_avg_ms": 7,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 4,
+      "n": 5
+    },
+    "write_append": {
+      "times_ms": [
+        19,
+        10,
+        11,
+        12,
+        11
+      ],
+      "avg_ms": 12,
+      "med_ms": 11,
+      "min_ms": 10,
+      "max_ms": 19,
+      "ps_exec_avg_ms": 11,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 4,
+      "n": 5
+    },
+    "multi_write": {
+      "times_ms": [
+        17,
+        8,
+        7,
+        8,
+        8
+      ],
+      "avg_ms": 9,
+      "med_ms": 8,
+      "min_ms": 7,
+      "max_ms": 17,
+      "ps_exec_avg_ms": 8,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 4,
+      "n": 5
+    }
+  },
+  "write_pipeline": {
+    "times_ms": [
+      19,
+      11,
+      6,
+      9,
+      5
+    ],
+    "avg_ms": 10,
+    "verify_pass": 0,
+    "verify_total": 5
+  },
+  "large_output": {
+    "read_large_file": {
+      "times_ms": [
+        41,
+        30,
+        40,
+        27,
+        41
+      ],
+      "avg_ms": 35,
+      "med_ms": 40,
+      "min_ms": 27,
+      "max_ms": 41,
+      "ps_exec_avg_ms": 30,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "dir_src": {
+      "times_ms": [
+        12,
+        9,
+        10,
+        9,
+        12
+      ],
+      "avg_ms": 10,
+      "med_ms": 10,
+      "min_ms": 9,
+      "max_ms": 12,
+      "ps_exec_avg_ms": 8,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "git_log_50": {
+      "times_ms": [
+        71,
+        64,
+        63,
+        69,
+        59
+      ],
+      "avg_ms": 65,
+      "med_ms": 64,
+      "min_ms": 59,
+      "max_ms": 71,
+      "ps_exec_avg_ms": 63,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    },
+    "search_broad": {
+      "times_ms": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "avg_ms": 1,
+      "med_ms": 1,
+      "min_ms": 1,
+      "max_ms": 1,
+      "ps_exec_avg_ms": 1,
+      "safety_avg_ms": 0,
+      "kan_avg_ms": 0,
+      "cache_hits": 5,
+      "n": 5
+    }
+  },
+  "safety": {
+    "blocked_rm_rf": {
+      "times_ms": [
+        17,
+        7,
+        8
+      ],
+      "avg_ms": 10,
+      "was_blocked": true
+    },
+    "blocked_format_disk": {
+      "times_ms": [
+        2,
+        3,
+        3
+      ],
+      "avg_ms": 2,
+      "was_blocked": true
+    },
+    "cache_comparison": {
+      "cold_ms": 111,
+      "warm_avg_ms": 102,
+      "cold_safety_ms": 2,
+      "warm_safety_avg_ms": 0,
+      "speedup": 1.09
+    }
+  },
+  "batch": {
+    "num_commands": 5,
+    "times_ms": [
+      401,
+      394,
+      519,
+      572,
+      455
+    ],
+    "avg_ms": 468,
+    "avg_per_cmd_ms": 93
+  },
+  "sequential_baseline": {
+    "num_commands": 5,
+    "times_ms": [
+      1338,
+      392,
+      450,
+      424,
+      501
+    ],
+    "avg_ms": 621,
+    "avg_per_cmd_ms": 124
+  },
+  "concurrent": {
+    "sessions": 3,
+    "wall_times_ms": [
+      1576,
+      194,
+      171,
+      182,
+      185
+    ],
+    "wall_avg_ms": 461,
+    "sequential_equiv_avg_ms": 1354,
+    "parallelism_speedup": 2.94
+  },
+  "throughput": {
+    "commands": 20,
+    "elapsed_ms": 37,
+    "commands_per_second": 530.3,
+    "avg_ms_per_command": 1.9
+  },
+  "batch_speedup": 1.33,
+  "finished_at": "2026-04-06T16:57:12.138815+00:00"
+}

@@ -94,9 +94,14 @@ class LoomTelemetry:
                 key = json.dumps(labels, sort_keys=True)
                 self._labels[name][key] += value
 
+    _MAX_DURATION_SAMPLES: int = 1000  # rolling window to prevent unbounded growth
+
     def observe(self, name: str, value: float, **labels: str) -> None:
         with self._lock:
-            self._durations[name].append(value)
+            bucket = self._durations[name]
+            bucket.append(value)
+            if len(bucket) > self._MAX_DURATION_SAMPLES:
+                del bucket[: len(bucket) - self._MAX_DURATION_SAMPLES]
             if labels:
                 key = json.dumps(labels, sort_keys=True)
                 self._labels[name][key] += 1
@@ -109,37 +114,37 @@ class LoomTelemetry:
             return self._counters.get(name, 0.0)
 
     def get_summary(self) -> dict[str, Any]:
+        # Snapshot under lock, then compute stats outside lock to avoid blocking observers
         with self._lock:
-            summary: dict[str, Any] = {
-                "uptime_seconds": round(time.monotonic() - self._start_time, 3),
-                "counters": dict(self._counters),
-                "labeled_counters": {},
-                "durations": {},
+            snapshot_counters = dict(self._counters)
+            snapshot_labels = {n: dict(m) for n, m in self._labels.items()}
+            snapshot_durations = {n: list(v) for n, v in self._durations.items()}
+            uptime = round(time.monotonic() - self._start_time, 3)
+
+        summary: dict[str, Any] = {
+            "uptime_seconds": uptime,
+            "counters": snapshot_counters,
+            "labeled_counters": snapshot_labels,
+            "durations": {},
+        }
+
+        for name, values in snapshot_durations.items():
+            if not values:
+                continue
+            sorted_v = sorted(values)
+            n = len(sorted_v)
+            p95_index = int(n * 0.95) if n >= 20 else n - 1
+            summary["durations"][name] = {
+                "count": n,
+                "min": round(sorted_v[0], 3),
+                "max": round(sorted_v[-1], 3),
+                "avg": round(sum(sorted_v) / n, 3),
+                "p95": round(sorted_v[p95_index], 3),
+                "total": round(sum(sorted_v), 3),
             }
 
-            for name, label_map in self._labels.items():
-                summary["labeled_counters"][name] = {
-                    k: v for k, v in label_map.items()
-                }
-
-            for name, values in self._durations.items():
-                if not values:
-                    continue
-                sorted_v = sorted(values)
-                n = len(sorted_v)
-                p95_index = int(n * 0.95) if n >= 20 else n - 1
-                summary["durations"][name] = {
-                    "count": n,
-                    "min": round(sorted_v[0], 3),
-                    "max": round(sorted_v[-1], 3),
-                    "avg": round(sum(sorted_v) / n, 3),
-                    "p95": round(sorted_v[p95_index], 3),
-                    "total": round(sum(sorted_v), 3),
-                }
-
-            summary["waterfall"] = self.waterfall.get_waterfall()
-
-            return summary
+        summary["waterfall"] = self.waterfall.get_waterfall()
+        return summary
 
     def save(self) -> Path:
         metrics_dir = self._state_dir / "metrics"

@@ -1,0 +1,99 @@
+{
+  "uptime_seconds": 75.192,
+  "counters": {
+    "agent_tasks_total": 1.0,
+    "memory_searches": 1.0,
+    "agent_model_calls": 2.0,
+    "model_calls_total": 2.0,
+    "model_tokens_input": 2422.0,
+    "model_tokens_output": 697.0,
+    "agent_tool_calls_total": 1.0,
+    "ps_result_cache_misses_total": 1.0,
+    "ps_commands_total": 1.0,
+    "ps_sessions_created": 1.0,
+    "memory_episodes_stored": 1.0,
+    "agent_tasks_completed": 1.0,
+    "agent_turns_total": 2.0
+  },
+  "labeled_counters": {
+    "agent_model_calls": {
+      "{\"model\": \"qwen3:4b\"}": 2.0
+    },
+    "model_calls_total": {
+      "{\"provider\": \"ollama\"}": 2.0
+    },
+    "model_call_duration_seconds": {
+      "{\"provider\": \"ollama\"}": 2.0
+    },
+    "agent_tool_calls_total": {
+      "{\"tool\": \"find_files\"}": 1.0
+    },
+    "agent_tool_latency_seconds": {
+      "{\"tool\": \"find_files\"}": 1.0
+    }
+  },
+  "durations": {
+    "model_call_duration_seconds": {
+      "count": 2,
+      "min": 9.417,
+      "max": 23.52,
+      "avg": 16.469,
+      "p95": 23.52,
+      "total": 32.937
+    },
+    "ps_safety_kan_seconds": {
+      "count": 1,
+      "min": 0.003,
+      "max": 0.003,
+      "avg": 0.003,
+      "p95": 0.003,
+      "total": 0.003
+    },
+    "ps_safety_total_seconds": {
+      "count": 1,
+      "min": 0.003,
+      "max": 0.003,
+      "avg": 0.003,
+      "p95": 0.003,
+      "total": 0.003
+    },
+    "ps_command_output_bytes": {
+      "count": 1,
+      "min": 10967,
+      "max": 10967,
+      "avg": 10967.0,
+      "p95": 10967,
+      "total": 10967
+    },
+    "agent_tool_latency_seconds": {
+      "count": 1,
+      "min": 17.382,
+      "max": 17.382,
+      "avg": 17.382,
+      "p95": 17.382,
+      "total": 17.382
+    },
+    "agent_duration_seconds": {
+      "count": 1,
+      "min": 70.806,
+      "max": 70.806,
+      "avg": 70.806,
+      "p95": 70.806,
+      "total": 70.806
+    }
+  },
+  "waterfall": [
+    {
+      "name": "craft",
+      "children": [
+        {
+          "name": "agent_run",
+          "children": [],
+          "duration_ms": 70807
+        }
+      ],
+      "duration_ms": 73498
+    }
+  ],
+  "saved_at": "2026-04-06T17:39:36.163198+00:00"
+}

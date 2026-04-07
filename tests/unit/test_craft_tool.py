@@ -153,7 +153,10 @@ class TestCraftLocalMode:
             "truncated": False,
         })
 
-        with patch("loom.server._get_local_agent", return_value=mock_agent):
+        with patch("loom.local_agent.LocalAgent", return_value=mock_agent), \
+             patch("loom.server._get_engines", return_value=(MagicMock(), MagicMock())), \
+             patch("loom.server._get_local_engine", return_value=MagicMock()), \
+             patch("loom.server._get_ps_manager", return_value=MagicMock()):
             result = await craft(task="Fix the bug", mode="local")
 
         mock_agent.run.assert_awaited_once()
@@ -178,7 +181,10 @@ class TestCraftLocalMode:
             "truncated": False,
         })
 
-        with patch("loom.server._get_local_agent", return_value=mock_agent):
+        with patch("loom.local_agent.LocalAgent", return_value=mock_agent), \
+             patch("loom.server._get_engines", return_value=(MagicMock(), MagicMock())), \
+             patch("loom.server._get_local_engine", return_value=MagicMock()), \
+             patch("loom.server._get_ps_manager", return_value=MagicMock()):
             result = await craft(task="Analyze code", mode="local")
 
         parsed = json.loads(result)
@@ -205,7 +211,10 @@ class TestCraftLocalMode:
             "truncated": False,
         })
 
-        with patch("loom.server._get_local_agent", return_value=mock_agent), \
+        with patch("loom.local_agent.LocalAgent", return_value=mock_agent), \
+             patch("loom.server._get_engines", return_value=(MagicMock(), MagicMock())), \
+             patch("loom.server._get_local_engine", return_value=MagicMock()), \
+             patch("loom.server._get_ps_manager", return_value=MagicMock()), \
              patch.dict("os.environ", {"LOOM_CRAFT_MODE": "local"}):
             result = await craft(task="test", mode="")
 
@@ -303,7 +312,13 @@ class TestCraftImports:
         mock_agent = AsyncMock()
         mock_agent.run = AsyncMock(side_effect=RuntimeError("Model not loaded"))
 
-        with patch("loom.server._get_local_agent", return_value=mock_agent):
+        mock_runtime = MagicMock()
+        mock_runtime._cache = {"cloud_available": False, "local_available": False}
+        mock_runtime.get_best_tool_model.return_value = ""
+        mock_runtime.get_best_analysis_model.return_value = ""
+
+        with patch("loom.server._get_local_agent", return_value=mock_agent), \
+             patch("loom.server.get_runtime", AsyncMock(return_value=mock_runtime)):
             result = await local_agent_task(task="Do something")
 
         parsed = json.loads(result)
@@ -331,7 +346,13 @@ class TestCraftImports:
             "truncated": False,
         })
 
-        with patch("loom.server._get_local_agent", return_value=mock_agent):
+        mock_runtime = MagicMock()
+        mock_runtime._cache = {"cloud_available": False, "local_available": False}
+        mock_runtime.get_best_tool_model.return_value = ""
+        mock_runtime.get_best_analysis_model.return_value = ""
+
+        with patch("loom.server._get_local_agent", return_value=mock_agent), \
+             patch("loom.server.get_runtime", AsyncMock(return_value=mock_runtime)):
             result = await local_agent_task(task="Review code")
 
         parsed = json.loads(result)

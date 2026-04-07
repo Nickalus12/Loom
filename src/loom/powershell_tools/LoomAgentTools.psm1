@@ -55,17 +55,28 @@ function Search-LoomCode {
         [string]$Include = "*.*",
         [int]$MaxResults = 50
     )
-    $results = Get-ChildItem -Path $Path -Recurse -File -Include $Include -ErrorAction SilentlyContinue |
-        Select-String -Pattern $Pattern -ErrorAction SilentlyContinue |
-        Select-Object -First $MaxResults |
-        ForEach-Object {
-            @{
-                file = $_.Path
-                line = $_.LineNumber
-                text = $_.Line.Trim()
-            }
-        }
-    @{ success = $true; pattern = $Pattern; count = ($results | Measure-Object).Count; matches = $results } | ConvertTo-Json -Compress -Depth 3
+
+    $rgCmd = Get-Command rg -ErrorAction SilentlyContinue
+    if ($rgCmd) {
+        # ripgrep: fast indexed search, respects .gitignore
+        $globs = if ($Include -and $Include -ne "*.*") { @("--glob", $Include) } else { @() }
+        $raw = & rg --json @globs -- $Pattern $Path 2>$null |
+            Where-Object { $_ } |
+            ForEach-Object { try { $_ | ConvertFrom-Json } catch { $null } } |
+            Where-Object { $_ -and $_.type -eq "match" } |
+            Select-Object -First $MaxResults
+        $results = @($raw | ForEach-Object {
+            @{ file = $_.data.path.text; line = $_.data.line_number; text = ($_.data.lines.text -replace "`r`n|`r|`n", "").Trim() }
+        })
+        @{ success = $true; pattern = $Pattern; count = $results.Count; matches = $results; engine = "rg" } | ConvertTo-Json -Compress -Depth 3
+    } else {
+        # Fallback: Select-String (no index, full tree walk)
+        $results = @(Get-ChildItem -Path $Path -Recurse -File -Include $Include -ErrorAction SilentlyContinue |
+            Select-String -Pattern $Pattern -ErrorAction SilentlyContinue |
+            Select-Object -First $MaxResults |
+            ForEach-Object { @{ file = $_.Path; line = $_.LineNumber; text = $_.Line.Trim() } })
+        @{ success = $true; pattern = $Pattern; count = $results.Count; matches = $results; engine = "select-string" } | ConvertTo-Json -Compress -Depth 3
+    }
 }
 
 function Find-LoomFiles {
@@ -76,17 +87,25 @@ function Find-LoomFiles {
         [string]$Path = ".",
         [int]$MaxResults = 100
     )
-    $files = Get-ChildItem -Path $Path -Recurse -File -Filter $Pattern -ErrorAction SilentlyContinue |
-        Select-Object -First $MaxResults |
-        ForEach-Object {
-            @{
-                name = $_.Name
-                path = $_.FullName
-                size = $_.Length
-                modified = $_.LastWriteTime.ToString("o")
-            }
-        }
-    @{ success = $true; pattern = $Pattern; count = ($files | Measure-Object).Count; files = $files } | ConvertTo-Json -Compress -Depth 3
+
+    $rgCmd = Get-Command rg -ErrorAction SilentlyContinue
+    if ($rgCmd) {
+        # rg --files is significantly faster than Get-ChildItem -Recurse
+        $globs = if ($Pattern -and $Pattern -ne "*") { @("--glob", $Pattern) } else { @() }
+        $files = @(& rg --files @globs $Path 2>$null |
+            Where-Object { $_ } |
+            Select-Object -First $MaxResults |
+            ForEach-Object {
+                $f = Get-Item $_ -ErrorAction SilentlyContinue
+                if ($f) { @{ name = $f.Name; path = $f.FullName; size = $f.Length; modified = $f.LastWriteTime.ToString("o") } }
+            } | Where-Object { $_ })
+        @{ success = $true; pattern = $Pattern; count = $files.Count; files = $files; engine = "rg" } | ConvertTo-Json -Compress -Depth 3
+    } else {
+        $files = @(Get-ChildItem -Path $Path -Recurse -File -Filter $Pattern -ErrorAction SilentlyContinue |
+            Select-Object -First $MaxResults |
+            ForEach-Object { @{ name = $_.Name; path = $_.FullName; size = $_.Length; modified = $_.LastWriteTime.ToString("o") } })
+        @{ success = $true; pattern = $Pattern; count = $files.Count; files = $files; engine = "get-childitem" } | ConvertTo-Json -Compress -Depth 3
+    }
 }
 
 # ─── Git Operations ─────────────────────────────────────────────
@@ -242,6 +261,154 @@ function Invoke-LoomTest {
     @{ success = ($LASTEXITCODE -eq 0); command = $Command; output = ($output -join "`n") } | ConvertTo-Json -Compress
 }
 
+# ─── Advanced Tools ─────────────────────────────────────────────
+
+function Edit-LoomFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position = 0)]
+        [string]$Path,
+        [Parameter(Mandatory, Position = 1)]
+        [string]$OldText,
+        [Parameter(Mandatory, Position = 2)]
+        [string]$NewText,
+        [switch]$Regex,
+        [switch]$All
+    )
+    if (-not (Test-Path $Path)) {
+        return @{ success = $false; error = "File not found: $Path" } | ConvertTo-Json -Compress
+    }
+    $content = Get-Content -Path $Path -Raw -Encoding UTF8
+    $replaced = 0
+    if ($Regex) {
+        $newContent = if ($All) {
+            [regex]::Replace($content, $OldText, $NewText)
+        } else {
+            [regex]::Replace($content, $OldText, $NewText, [System.Text.RegularExpressions.RegexOptions]::None, [System.TimeSpan]::FromSeconds(5))
+            # Count occurrences
+        }
+        $replaced = ([regex]::Matches($content, $OldText)).Count
+        $newContent = [regex]::Replace($content, $OldText, $NewText)
+    } else {
+        $replaced = ([regex]::Matches([regex]::Escape($content), [regex]::Escape($OldText))).Count
+        if ($All) {
+            $newContent = $content.Replace($OldText, $NewText)
+        } else {
+            $idx = $content.IndexOf($OldText)
+            if ($idx -lt 0) {
+                return @{ success = $false; error = "OldText not found in file"; path = $Path } | ConvertTo-Json -Compress
+            }
+            $newContent = $content.Substring(0, $idx) + $NewText + $content.Substring($idx + $OldText.Length)
+            $replaced = 1
+        }
+    }
+    Set-Content -Path $Path -Value $newContent -Encoding UTF8 -NoNewline
+    @{
+        success = $true
+        path = (Resolve-Path $Path).Path
+        replacements_made = $replaced
+        preview = ($newContent -split "`n" | Select-Object -First 5) -join "`n"
+    } | ConvertTo-Json -Compress
+}
+
+function Get-LoomPortStatus {
+    [CmdletBinding()]
+    param(
+        [int[]]$Ports = @(8080, 8443, 11434, 7474, 7687, 5432, 3000, 3001, 8000, 9000)
+    )
+    $results = @($Ports | ForEach-Object {
+        $port = $_
+        $listening = $false
+        $pid_ = $null
+        $procName = $null
+        try {
+            $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+            if ($conn) {
+                $listening = $true
+                $pid_ = $conn[0].OwningProcess
+                $proc = Get-Process -Id $pid_ -ErrorAction SilentlyContinue
+                $procName = if ($proc) { $proc.Name } else { $null }
+            }
+        } catch {}
+        @{ port = $port; listening = $listening; pid = $pid_; process_name = $procName }
+    })
+    @{ success = $true; ports = $results } | ConvertTo-Json -Compress -Depth 3
+}
+
+function Invoke-LoomHttpRequest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position = 0)]
+        [string]$Uri,
+        [string]$Method = 'GET',
+        [hashtable]$Headers = @{},
+        [string]$Body = '',
+        [int]$TimeoutSec = 30
+    )
+    # Safety: only allow localhost and RFC-1918 private addresses
+    $parsedUri = [System.Uri]$Uri
+    $host_ = $parsedUri.Host
+    $isLocal = $host_ -match '^(localhost|127\.\d+\.\d+\.\d+|::1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)$'
+    if (-not $isLocal) {
+        return @{ success = $false; error = "Invoke-LoomHttpRequest is restricted to localhost and private IPs. Uri: $Uri" } | ConvertTo-Json -Compress
+    }
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    try {
+        $params = @{ Uri = $Uri; Method = $Method; TimeoutSec = $TimeoutSec; UseBasicParsing = $true }
+        if ($Headers.Count -gt 0) { $params['Headers'] = $Headers }
+        if ($Body) { $params['Body'] = $Body }
+        $resp = Invoke-WebRequest @params -ErrorAction Stop
+        $sw.Stop()
+        @{
+            success = $true
+            status_code = [int]$resp.StatusCode
+            body = $resp.Content
+            headers = ($resp.Headers | ConvertTo-Json -Compress -Depth 2)
+            elapsed_ms = $sw.ElapsedMilliseconds
+        } | ConvertTo-Json -Compress
+    } catch {
+        $sw.Stop()
+        @{ success = $false; error = $_.Exception.Message; elapsed_ms = $sw.ElapsedMilliseconds } | ConvertTo-Json -Compress
+    }
+}
+
+function Get-LoomProcessInfo {
+    [CmdletBinding()]
+    param(
+        [string]$Name = '',
+        [int]$Id = -1,
+        [switch]$IncludeThreads
+    )
+    try {
+        $procs = if ($Id -gt 0) {
+            Get-Process -Id $Id -ErrorAction SilentlyContinue
+        } elseif ($Name) {
+            Get-Process -Name $Name -ErrorAction SilentlyContinue
+        } else {
+            Get-Process -ErrorAction SilentlyContinue | Sort-Object CPU -Descending | Select-Object -First 20
+        }
+        $results = @($procs | ForEach-Object {
+            $p = $_
+            $entry = @{
+                name = $p.Name
+                id = $p.Id
+                cpu_s = [math]::Round($p.CPU, 2)
+                memory_mb = [math]::Round($p.WorkingSet64 / 1MB, 2)
+                start_time = if ($p.StartTime) { $p.StartTime.ToString("o") } else { $null }
+                responding = $p.Responding
+                thread_count = $p.Threads.Count
+            }
+            if ($IncludeThreads) {
+                $entry['threads'] = @($p.Threads | ForEach-Object { @{ id = $_.Id; state = $_.ThreadState.ToString() } })
+            }
+            $entry
+        })
+        @{ success = $true; count = $results.Count; processes = $results } | ConvertTo-Json -Compress -Depth 4
+    } catch {
+        @{ success = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress
+    }
+}
+
 # ─── Module Export ──────────────────────────────────────────────
 
 Export-ModuleMember -Function @(
@@ -259,5 +426,9 @@ Export-ModuleMember -Function @(
     'Get-LoomDiskUsage',
     'Get-LoomMemoryUsage',
     'Invoke-LoomBuild',
-    'Invoke-LoomTest'
+    'Invoke-LoomTest',
+    'Edit-LoomFile',
+    'Get-LoomPortStatus',
+    'Invoke-LoomHttpRequest',
+    'Get-LoomProcessInfo'
 )

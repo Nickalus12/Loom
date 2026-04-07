@@ -205,23 +205,25 @@ class TestFormatStringHardening:
 class TestSafetyReview:
     """Verify review_powershell_command re-raises and _execute_inner blocks on failure."""
 
-    async def test_review_powershell_command_reraises_on_failure(self, inference_engine):
-        """Should propagate ConnectionError from _chat instead of returning a fallback dict."""
+    async def test_review_powershell_command_fails_open_on_connection_error(self, inference_engine):
+        """Should return CAUTION (fail-open) when Ollama is unreachable — never block execution."""
         inference_engine._client.chat.completions.create = AsyncMock(
             side_effect=ConnectionError("Ollama is not running")
         )
 
-        with pytest.raises(ConnectionError, match="Ollama is not running"):
-            await inference_engine.review_powershell_command("Get-Process")
+        result = await inference_engine.review_powershell_command("Get-Process")
+        assert result["risk_level"] == "caution"
+        assert "unavailable" in result["reason"].lower()
 
-    async def test_review_powershell_command_reraises_on_timeout(self, inference_engine):
-        """Should propagate asyncio.TimeoutError from _chat instead of returning a fallback dict."""
+    async def test_review_powershell_command_fails_open_on_timeout(self, inference_engine):
+        """Should return CAUTION (fail-open) on timeout — never block execution when Ollama is slow."""
         inference_engine._client.chat.completions.create = AsyncMock(
             side_effect=asyncio.TimeoutError()
         )
 
-        with pytest.raises(asyncio.TimeoutError):
-            await inference_engine.review_powershell_command("Get-ChildItem")
+        result = await inference_engine.review_powershell_command("Get-ChildItem")
+        assert result["risk_level"] == "caution"
+        assert "unavailable" in result["reason"].lower()
 
     async def test_execute_inner_blocks_when_safety_unavailable(self, repl_manager):
         """Should return success=False with risk_level=blocked when safety review raises."""
