@@ -392,8 +392,9 @@ class LoomAgent:
             system += memory_context
         if "qwen3" in self._tool_model.lower():
             system += (
-                "\n\nEnable your thinking. Reason step by step about what tools "
-                "to use and in what order before making tool calls."
+                "\n\n/no_think\n"
+                "Do NOT generate <think> tags. Respond ONLY with tool_calls. "
+                "Never explain what you will do — just call the tools directly."
             )
 
         messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
