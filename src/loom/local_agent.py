@@ -693,6 +693,12 @@ class LoomAgent:
         if tools:
             kwargs["tools"] = tools
 
+        # Disable thinking for qwen3 models — saves 30-90s per call
+        if "qwen3" in model.lower() and provider == "ollama":
+            kwargs["extra_body"] = {"think": False}
+            # Also keep model loaded in VRAM (no 2s reload penalty per call)
+            kwargs.setdefault("extra_body", {})["keep_alive"] = "30m"
+
         msg_count = len(messages)
         input_chars = sum(len(m.get("content", "")) for m in messages)
         logger.info("[LLM] Calling %s via %s (%d msgs, ~%d chars)...", model, provider, msg_count, input_chars)
@@ -700,14 +706,17 @@ class LoomAgent:
         llm_span = self._trace_begin("llm_call", model,
             provider=provider, msgs=msg_count, input_chars=input_chars)
 
+        # Timeout: 45s for local models (fast), 90s for cloud (network latency)
+        llm_timeout = 45.0 if provider == "ollama" else 90.0
+
         call_start = time.monotonic()
         try:
             result = await asyncio.wait_for(
                 client.chat.completions.create(**kwargs),
-                timeout=120.0,
+                timeout=llm_timeout,
             )
         except asyncio.TimeoutError:
-            logger.error("[LLM] TIMEOUT after 120s waiting for %s (%s)", model, provider)
+            logger.error("[LLM] TIMEOUT after %.0fs waiting for %s (%s)", llm_timeout, model, provider)
             self._telem_inc("model_call_errors", provider=provider)
             self._trace_end(llm_span)
             self._trace("error", f"timeout:{model}", provider=provider)
@@ -859,7 +868,7 @@ class LoomAgent:
                     model=self._analysis_model,
                     messages=messages_copy,
                 ),
-                timeout=120.0,
+                timeout=60.0,
             )
             return response.choices[0].message.content or ""
         except Exception as exc:
