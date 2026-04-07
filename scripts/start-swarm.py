@@ -12,6 +12,12 @@ import os
 import sys
 from pathlib import Path
 
+# CRITICAL: Force unbuffered stdout — MCP stdio transport breaks if Python buffers
+# the JSON-RPC response. Claude Code times out waiting for the first byte.
+os.environ["PYTHONUNBUFFERED"] = "1"
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(write_through=True)  # type: ignore[attr-defined]
+
 
 def find_loom_root() -> Path:
     """Find the Loom project root by searching for pyproject.toml with name='loom'."""
