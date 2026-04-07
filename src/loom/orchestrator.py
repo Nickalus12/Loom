@@ -612,26 +612,26 @@ class LoomOrchestrator:
             scores[group_name] = total
         return scores
 
-    def craft_plan(self, task: str) -> SwarmPlan:
-        """Create a task-appropriate phase plan based on weighted keyword analysis.
+    def craft_plan(self, task: str, forced_type: str | None = None) -> SwarmPlan:
+        """Create a task-appropriate phase plan.
 
-        Each keyword group (review, debug, refactor, test, document, build)
-        has multiple keywords with numeric weights.  The task is scored
-        against every group and the highest-scoring group selects the plan.
-        If no group scores above zero, the *build* pipeline is chosen as
-        the default.
-
-        Combined keywords are supported: when the winning plan type is in
-        ``_TEST_APPENDABLE_PLANS`` **and** the "test" group also scores
-        above zero (but is not the winner), an extra test-verification
-        phase is appended to the plan.
+        Args:
+            task: The task description.
+            forced_type: Override keyword detection with an explicit plan type
+                         ('build', 'debug', 'refactor', 'review', 'test',
+                          'document', 'optimize', 'deploy').
         """
         scores = self._score_keyword_groups(task)
 
-        # Pick the winning plan type (highest score, "build" as default)
-        best_type = max(scores, key=lambda k: scores[k])
-        if scores[best_type] == 0:
-            best_type = "build"
+        if forced_type and forced_type in ("build", "debug", "refactor", "review",
+                                            "test", "document", "optimize", "deploy"):
+            best_type = forced_type
+            logger.info("Plan type forced to '%s' (keyword scores: %s)", forced_type, scores)
+        else:
+            best_type = max(scores, key=lambda k: scores[k])
+            if scores[best_type] == 0:
+                best_type = "build"
+            logger.info("Plan type auto-detected as '%s' (scores: %s)", best_type, scores)
 
         plan_map = {
             "review": self._plan_review,

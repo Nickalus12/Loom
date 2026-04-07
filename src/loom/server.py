@@ -135,11 +135,13 @@ def _get_local_agent() -> LocalAgent:
 async def craft(
     task: str = Field(description="The engineering task to craft via multi-agent pipeline."),
     mode: str = Field(default="auto", description="Execution mode: 'auto' (detect best), 'cloud', 'local' (Ollama only), or 'hybrid' (local tools + cloud analysis)."),
+    plan_type: str = "auto",
 ) -> str:
     """Craft a solution using Loom's multi-agent pipeline.
     Runs: Architect -> Security + Quality (parallel) -> Coder -> Code Review.
     mode='auto': Detects available services and picks the best strategy.
-    mode='local': All Ollama. mode='hybrid': Local tool-calling + cloud analysis. mode='cloud': All cloud."""
+    mode='local': All Ollama. mode='hybrid': Local tool-calling + cloud analysis. mode='cloud': All cloud.
+    plan_type='auto': Keyword-detected. Override with explicit type when task text triggers wrong plan."""
     from loom.telemetry import get_telemetry
     tel = get_telemetry()
     tel.waterfall.begin("craft")
@@ -193,7 +195,12 @@ async def craft(
         else:
             memory, orchestrator = _get_engines()
             tel.waterfall.begin("synthesize_agent")
-            plan = await orchestrator.execute_swarm(task)
+            # Use explicit plan_type if provided, otherwise auto-detect from keywords
+            if plan_type and plan_type != "auto":
+                plan = orchestrator.craft_plan(task, forced_type=plan_type)
+                plan = await orchestrator.execute_plan(plan)
+            else:
+                plan = await orchestrator.execute_swarm(task)
             tel.waterfall.end()
             phases_summary = "; ".join(
                 f"Phase {p.id} ({p.name}): {p.status}" for p in plan.phases
