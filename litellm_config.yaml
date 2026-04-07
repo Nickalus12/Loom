@@ -56,7 +56,7 @@ model_list:
   - model_name: "light/default"
     litellm_params:
       model: "ollama/qwen3:4b"
-      api_base: "http://localhost:11434"
+      api_base: "http://host.docker.internal:11434"
     model_info:
       id: "light-ollama-fallback"
     tpm: 100000
@@ -79,19 +79,19 @@ model_list:
   - model_name: "local/default"
     litellm_params:
       model: "ollama/gemma4-e2b"
-      api_base: "http://localhost:11434"
+      api_base: "http://host.docker.internal:11434"
     tpm: 100000
 
   - model_name: "local/analysis"
     litellm_params:
       model: "ollama/deepseek-coder-v2:16b"
-      api_base: "http://localhost:11434"
+      api_base: "http://host.docker.internal:11434"
     tpm: 100000
 
   - model_name: "local/fast"
     litellm_params:
       model: "ollama/qwen3:4b"
-      api_base: "http://localhost:11434"
+      api_base: "http://host.docker.internal:11434"
     tpm: 100000
 
   # ─────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ model_list:
 litellm_settings:
   drop_params: true
   num_retries: 3
-  request_timeout: 120
+  request_timeout: 30
   fallbacks:
     - {"heavy/default": ["heavy-grok4", "heavy-gemini-fallback"]}
     - {"light/default": ["light-gemini", "light-ollama-fallback"]}
@@ -121,7 +121,7 @@ litellm_settings:
 router_settings:
   routing_strategy: "usage-based-routing"
   num_retries: 2
-  timeout: 120
+  timeout: 30
   model_group_alias:
     "heavy/*": "heavy/default"
     "light/*": "light/default"
