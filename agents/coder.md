@@ -54,6 +54,25 @@ Via `run_shell_command` you have access to all Loom PS functions:
 - `Get-LoomPortStatus` · `Get-LoomProcessInfo` · `Invoke-LoomHttpRequest 'url'`
 - `Invoke-LoomBuild` · `Invoke-LoomTest [-Filter 'pattern']`
 
+## Cloud Mode File Output Format
+
+When running in cloud mode (no direct file system access), you MUST output every file
+using this exact format so the orchestrator can write it to disk automatically:
+
+```
+### `path/to/file.py`
+```python
+# full file content here
+```
+```
+
+Rules:
+- The path MUST be on the line immediately above the opening triple backtick
+- Use the ABSOLUTE path when you know it, or the project-relative path otherwise
+- One code block per file — do not split a file across multiple blocks
+- Output the COMPLETE file content, not diffs or partial content
+- After all files, include your Task Report as usual
+
 ## Decision Frameworks
 
 ### Implementation Order Protocol

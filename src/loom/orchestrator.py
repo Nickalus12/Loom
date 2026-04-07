@@ -230,6 +230,93 @@ class LoomOrchestrator:
                 ready.append(phase)
         return ready
 
+    # Agents whose text responses should be parsed for file writes
+    _WRITING_AGENTS = {"coder", "refactor", "devops_engineer", "data_engineer", "technical_writer"}
+
+    def _extract_and_write_files(self, response: str) -> list[str]:
+        """Parse a coder agent response for code blocks and write them to disk.
+
+        Handles these markdown patterns:
+          1. ### `path/to/file.py` or **`path/to/file.py`** before a code block
+          2. # filepath: path  or  # path  as first line inside a code block
+          3. <file path="...">...</file> XML blocks
+          4. Write-LoomFile 'path' 'content' PowerShell commands in code blocks
+        """
+        import os
+        written: list[str] = []
+
+        # Pattern 1: header line immediately before a fenced code block
+        # Matches:  ### `path`   **`path`**   **path**   ### path
+        header_block = re.compile(
+            r'(?:^|\n)'
+            r'(?:#{1,4}\s*|(?:\*\*)+)'          # ### or **
+            r'[`\'"]?([^\n`\'"]+?\.[\w]+)[`\'"]?' # filename with extension
+            r'(?:\*\*)?[:\s]*\n'                  # optional colon/spaces
+            r'```[\w]*\n(.*?)```',                # code block
+            re.DOTALL | re.MULTILINE,
+        )
+        for m in header_block.finditer(response):
+            path_raw, content = m.group(1).strip(), m.group(2)
+            written += self._write_file_safe(path_raw, content)
+
+        # Pattern 2: # filepath: path  or  # file: path  as first line inside block
+        inline_path = re.compile(
+            r'```[\w]*\n'
+            r'(?:#\s*(?:filepath|file|path|filename)[:\s]+([^\n]+)\n)'
+            r'(.*?)```',
+            re.DOTALL,
+        )
+        already = {w.replace("\\", "/") for w in written}
+        for m in inline_path.finditer(response):
+            path_raw, content = m.group(1).strip(), m.group(2)
+            if path_raw.replace("\\", "/") not in already:
+                written += self._write_file_safe(path_raw, content)
+
+        # Pattern 3: Write-LoomFile 'path' 'content' (PS command in response)
+        ps_write = re.compile(
+            r"Write-LoomFile\s+'([^']+)'\s+'((?:[^']|'')*)'",
+            re.DOTALL,
+        )
+        for m in ps_write.finditer(response):
+            path_raw = m.group(1).strip()
+            content = m.group(2).replace("''", "'")
+            if path_raw.replace("\\", "/") not in {w.replace("\\", "/") for w in written}:
+                written += self._write_file_safe(path_raw, content)
+
+        if written:
+            logger.info("Cloud coder wrote %d file(s): %s", len(written), written)
+        return written
+
+    def _write_file_safe(self, path_raw: str, content: str) -> list[str]:
+        """Resolve a path relative to LOOM_ALLOWED_ROOT and write it safely."""
+        import os
+        from pathlib import Path
+
+        # Skip paths that look like examples or comments
+        if any(x in path_raw.lower() for x in ("example", "placeholder", "...", "<", ">")):
+            return []
+        # Skip very short paths (likely not real files)
+        if len(path_raw) < 4 or "." not in path_raw:
+            return []
+
+        allowed_root = os.getenv("LOOM_ALLOWED_ROOT", os.getcwd())
+        try:
+            p = Path(path_raw)
+            if not p.is_absolute():
+                p = Path(allowed_root) / p
+            p = p.resolve()
+            # Safety: must be within allowed root
+            if not str(p).startswith(str(Path(allowed_root).resolve())):
+                logger.warning("Skipping write outside allowed root: %s", p)
+                return []
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(content, encoding="utf-8")
+            logger.info("Cloud coder wrote: %s (%d bytes)", p, len(content))
+            return [str(p)]
+        except Exception as exc:
+            logger.warning("Failed to write %s: %s", path_raw, exc)
+            return []
+
     async def _execute_phase(self, plan: SwarmPlan, phase: Phase) -> None:
         """
         Executes a single phase: dispatches the agent, parses the handoff
@@ -252,6 +339,17 @@ class LoomOrchestrator:
             phase.downstream_context = handoff["downstream_context"]
             phase.files_created = handoff["task_report"].get("files_created", [])
             phase.files_modified = handoff["task_report"].get("files_modified", [])
+
+            # For writing agents in cloud mode: extract code blocks and write to disk
+            if phase.agent in self._WRITING_AGENTS:
+                actually_written = self._extract_and_write_files(response)
+                if actually_written:
+                    # Merge with any paths the agent declared in its Task Report
+                    declared = set(phase.files_created + phase.files_modified)
+                    for path in actually_written:
+                        if path not in declared:
+                            phase.files_created.append(path)
+
             phase.status = "completed"
 
             phase_elapsed = time.monotonic() - phase_start
