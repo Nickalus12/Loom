@@ -167,14 +167,24 @@ async def craft(
                 ps_manager=manager,
                 memory_engine=memory,
                 hybrid=(effective_mode == "hybrid"),
+                max_turns=25,  # craft needs more turns than quick agent tasks
             )
             tel.waterfall.begin("agent_run")
             result = await agent.run(
-                f"You are an elite autonomous engineering agent. Complete this task end-to-end "
-                f"without stopping or asking for confirmation. You have full access to all project "
-                f"files, git, tests, and PowerShell tools. Work through all phases: understand the "
-                f"codebase, design the solution, implement all changes, verify with tests/build, "
-                f"and commit when done.\n\nTask: {task}"
+                f"You are an autonomous engineering agent. Your job is to WRITE CODE, not just analyze.\n\n"
+                f"WORKFLOW — do these in order:\n"
+                f"1. read_file or search_code to understand the relevant code (2-3 files max)\n"
+                f"2. IMMEDIATELY start writing changes using write_file or edit_file\n"
+                f"3. For each file that needs changes, call edit_file with old_text and new_text\n"
+                f"4. For new files, call write_file with the complete content\n"
+                f"5. After ALL changes are written, run_powershell to verify (build/test)\n\n"
+                f"RULES:\n"
+                f"- Do NOT spend more than 3 turns reading/searching. Start writing by turn 4.\n"
+                f"- Every task MUST produce at least one write_file or edit_file call.\n"
+                f"- If you only analyzed without writing, you FAILED the task.\n"
+                f"- Use edit_file for surgical changes to existing files.\n"
+                f"- Use write_file for creating new files.\n\n"
+                f"Task: {task}"
             )
             tel.waterfall.end()
             return json.dumps(result, default=str)

@@ -330,6 +330,24 @@ class LoomOrchestrator:
 
         prompt = f"## Objective\n\n{phase.objective}\n\n## Task\n\n{plan.task}"
 
+        # For writing agents: inject explicit file-output instructions
+        if phase.agent in self._WRITING_AGENTS:
+            prompt += (
+                "\n\n## CRITICAL: File Output Format\n\n"
+                "You are running in cloud mode with NO direct file system access.\n"
+                "You MUST output every file you create or modify using this exact format:\n\n"
+                "### `path/to/file.ext`\n"
+                "```language\n"
+                "// complete file content here\n"
+                "```\n\n"
+                "Rules:\n"
+                "- One code block per file with the path on the line immediately above\n"
+                "- Output the COMPLETE file content, not diffs or partial snippets\n"
+                "- Use project-relative paths (e.g., `src/loom/server.py`)\n"
+                "- You MUST write actual code. Analysis-only responses are rejected.\n"
+                "- After all files, include your Task Report as usual.\n"
+            )
+
         try:
             response = await self.dispatch_agent(phase.agent, prompt, context)
             handoff = self._parse_handoff(response)
