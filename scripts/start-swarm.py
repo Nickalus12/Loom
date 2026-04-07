@@ -76,8 +76,33 @@ def validate_environment(root: Path) -> list[str]:
     return errors
 
 
+def load_dotenv(root: Path) -> None:
+    """Load .env file from Loom root — keys like LITELLM_MASTER_KEY, API keys, etc."""
+    env_file = root / ".env"
+    if not env_file.exists():
+        return
+    try:
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            # Only set if not already in environment (env vars override .env)
+            if key and not os.getenv(key):
+                os.environ[key] = value
+    except Exception:
+        pass  # .env loading is best-effort
+
+
 def main():
     root = find_loom_root()
+
+    # Load .env FIRST — provides API keys, LITELLM_MASTER_KEY, etc.
+    load_dotenv(root)
 
     # Ensure src/ is on the path
     src_path = str(root / "src")
@@ -87,7 +112,6 @@ def main():
     # Validate environment
     errors = validate_environment(root)
     if errors:
-        # Print errors to stderr (MCP clients capture this for diagnostics)
         for err in errors:
             print(f"[loom-swarm] ERROR: {err}", file=sys.stderr)
         print(f"[loom-swarm] Loom root: {root}", file=sys.stderr)
@@ -98,6 +122,11 @@ def main():
     # Set LOOM_ALLOWED_ROOT if not already set — default to parent of Loom dir
     if not os.getenv("LOOM_ALLOWED_ROOT"):
         os.environ["LOOM_ALLOWED_ROOT"] = str(root.parent)
+
+    # Set LITELLM_MASTER_KEY default if not set (common first-run issue)
+    if not os.getenv("LITELLM_MASTER_KEY"):
+        os.environ["LITELLM_MASTER_KEY"] = "sk-1234"
+        print("[loom-swarm] WARN: LITELLM_MASTER_KEY not set — using default 'sk-1234'", file=sys.stderr)
 
     # Change to Loom root so relative paths work
     os.chdir(root)
