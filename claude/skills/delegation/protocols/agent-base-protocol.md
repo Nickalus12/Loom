@@ -20,6 +20,19 @@ You have **full authority** over this project. Complete every task end-to-end wi
 `Get-LoomPortStatus` · `Get-LoomProcessInfo` · `Invoke-LoomHttpRequest` ·
 `Invoke-LoomBuild` · `Invoke-LoomTest`
 
+**PSKit MCP tools available directly (no PowerShell wrapper needed):**
+File: `mcp__pskit__read_file` · `write_file` · `edit_file` · `read_file_range` · `move_file` · `delete_file` · `create_directory` · `list_directory` · `diff_files` · `search_code` · `find_files` · `run_command`
+Git: `mcp__pskit__git_status` · `git_diff` · `git_log` · `git_commit` · `git_branch` · `git_checkout` · `git_push` · `git_blame` · `git_stash` · `git_stash_pop`
+System: `mcp__pskit__gpu_status` · `disk_usage` · `memory_usage` · `port_status` · `process_info` · `http_request`
+Build: `mcp__pskit__build_project` · `test_project`
+Env: `mcp__pskit__get_env_vars` · `which` · `install_package`
+
+**When to use PSKit vs Loom PS tools:**
+- Use PSKit MCP tools (`mcp__pskit__*`) for direct, typed tool calls with structured JSON output
+- Use Loom PS tools (`execute_powershell` / `run_powershell`) when chaining multiple commands or when the PSKit server isn't connected
+- PSKit tools have TypedDict return schemas — Claude can parse results directly without JSON extraction
+- PSKit tools have `readOnlyHint` / `destructiveHint` annotations — respect them
+
 ---
 
 ## CRITICAL: File Writing Rule

@@ -52,6 +52,46 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "mcp__pskit__delete_file",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "PSKit delete_file was called. Verify: Is this deletion necessary and scoped? The file path is in $ARGUMENTS. If it's a temp/build artifact, approve. If it's source code or config, ask the user first. Respond with {\"ok\": true} or {\"ok\": false, \"reason\": \"why\"}.",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__pskit__git_push",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "PSKit git_push was called. Before pushing to remote, verify: Has the code been tested? Are there uncommitted changes? Is this the right branch? Check $ARGUMENTS for remote and branch. Respond with {\"ok\": true} or {\"ok\": false, \"reason\": \"why\"}.",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__pskit__run_command",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "PSKit run_command executes arbitrary PowerShell through the 5-tier KAN safety pipeline. The script is in $ARGUMENTS. Verify: Is this script safe and necessary? The KAN neural scorer and blocklist will also check it. Respond with {\"ok\": true} or {\"ok\": false, \"reason\": \"why\"}.",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__plugin_loom_loom-swarm__craft",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Loom craft was called — this launches the full multi-agent pipeline (Architect → Security + Quality → Coder → Review). The task and mode are in $ARGUMENTS. Verify the task is well-defined and the mode is appropriate. Respond with {\"ok\": true} or {\"ok\": false, \"reason\": \"why\"}.",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -62,6 +102,36 @@
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/after-agent.js",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__pskit__build_project",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "PSKit build_project just completed. The result (success, exit_code, stdout, stderr) is in $ARGUMENTS. If the build failed, summarize the error clearly and suggest which file/line to investigate. Respond with {\"ok\": true, \"additionalContext\": \"summary\"}.",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__pskit__test_project",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "PSKit test_project just completed. The result includes passed/failed/skipped counts, stdout, and stderr in $ARGUMENTS. If tests failed, identify which tests failed and suggest root causes. Respond with {\"ok\": true, \"additionalContext\": \"summary\"}.",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__pskit__git_commit",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "PSKit git_commit just completed. The commit output is in $ARGUMENTS. Verify the commit message follows conventional commits format (feat/fix/chore/docs/refactor). If it doesn't, note this for the user. Respond with {\"ok\": true}.",
+            "timeout": 5
           }
         ]
       }

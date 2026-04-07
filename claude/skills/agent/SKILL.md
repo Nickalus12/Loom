@@ -41,8 +41,16 @@ Run a local Ollama agent task. The agent operates entirely on your machine via O
 
 ## Constraints
 
-- All file operations pass through the 3-tier safety pipeline (KAN + blocklist + Gemma review)
+- All file operations pass through the 5-tier safety pipeline (cache + KAN + blocklist + path + Gemma review)
 - The agent runs up to 15 tool-calling turns by default
-- File writes require Ollama running (for Gemma safety review on elevated commands)
+- Gemma safety review fails open (CAUTION, not BLOCKED) if Ollama offline
 - Session memory requires Neo4j running (graceful degradation if unavailable)
-- The agent works within the project root only — path safety prevents external access
+- The agent works within `LOOM_ALLOWED_ROOT` only — path safety prevents external access
+
+## Alternative: PSKit MCP Tools
+
+If the local agent isn't needed (no autonomous multi-turn flow), use PSKit tools directly:
+- `mcp__pskit__read_file`, `edit_file`, `search_code` — same underlying PS functions
+- PSKit returns structured TypedDicts — easier for Claude to parse
+- PSKit has `readOnlyHint` annotations — safe tools auto-approve in clients
+- For quick reads/edits/searches, PSKit is faster than spawning a full local agent

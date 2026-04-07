@@ -35,6 +35,14 @@ Architect → Security + Quality (parallel) → Coder → Code Review
    - Code review findings (Critical/Major/Minor/Suggestion)
    - Git branch name (if local mode created one)
 
+## Verifying Results
+
+After craft completes, use PSKit tools to verify:
+- `mcp__pskit__build_project` — compile check
+- `mcp__pskit__test_project` — test suite
+- `mcp__pskit__git_diff` — review all changes
+- `mcp__pskit__git_status` — confirm clean state
+
 ## When to Use
 
 | Task | Command |
