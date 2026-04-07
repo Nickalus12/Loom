@@ -464,8 +464,40 @@ class LoomAgent:
             token_log.append(token_entry)
 
             if not choice.message.tool_calls:
+                # Fallback: if model output text with PS commands instead of tool_calls,
+                # extract and execute them. This handles qwen3 and other models that
+                # describe tool usage in text rather than emitting tool_call JSON.
+                content = choice.message.content or ""
+                extracted = self._extract_tool_calls_from_text(content)
+                if extracted:
+                    logger.info("[Turn %d] No tool_calls but found %d PS commands in text — executing as fallback",
+                                turn + 1, len(extracted))
+                    # Simulate tool calls from extracted commands
+                    for i, (tool_name, tool_args) in enumerate(extracted):
+                        total_tool_calls += 1
+                        tool_start = time.monotonic()
+                        result = await self._execute_agent_tool(tool_name, tool_args)
+                        tool_elapsed_ms = int((time.monotonic() - tool_start) * 1000)
+                        self._tool_log.append({
+                            "turn": turn, "tool": tool_name, "args": tool_args,
+                            "result_preview": result[:200], "cached": False,
+                            "retried": False, "duration_ms": tool_elapsed_ms,
+                        })
+                        if tool_name in self._FILE_MUTATING_TOOLS:
+                            path = tool_args.get("path", "")
+                            if path:
+                                self._files_changed.add(path)
+                        messages.append(assistant_msg)
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": f"fallback_{turn}_{i}",
+                            "content": result[:self._max_result_chars],
+                        })
+                    self._trace_end(turn_span)
+                    continue  # Next turn with tool results in context
+
                 messages.append(assistant_msg)
-                final_response = choice.message.content or ""
+                final_response = content
                 logger.info("[Turn %d] Final response (%.1fs, ~%d input tokens, ~%d output tokens)",
                              turn + 1, turn_elapsed, token_entry["input_tokens_est"], token_entry["output_tokens_est"])
                 self._trace_end(turn_span)
@@ -750,6 +782,67 @@ class LoomAgent:
         except Exception as exc:
             logger.warning("[Planning] Failed after %.1fs: %s", time.monotonic() - plan_start, exc)
             return ""
+
+    def _extract_tool_calls_from_text(self, content: str) -> list[tuple[str, dict]]:
+        """Extract tool calls from model text output when it describes PS commands.
+
+        Handles patterns like:
+        - Read-LoomFile 'path'
+        - Edit-LoomFile 'path' -OldText '...' -NewText '...'
+        - Write-LoomFile 'path' 'content'
+        - read_file(path="...") or edit_file(path="...", old_text="...", new_text="...")
+        - Code blocks with PS commands
+        """
+        import re
+        calls: list[tuple[str, dict]] = []
+
+        # Pattern 1: Read-LoomFile 'path'
+        for m in re.finditer(r"Read-LoomFile\s+'([^']+)'", content):
+            calls.append(("read_file", {"path": m.group(1)}))
+
+        # Pattern 2: Edit-LoomFile 'path' -OldText '...' -NewText '...'
+        for m in re.finditer(
+            r"Edit-LoomFile\s+'([^']+)'\s+(?:-OldText\s+)?'((?:[^']|'')*?)'\s+(?:-NewText\s+)?'((?:[^']|'')*?)'",
+            content, re.DOTALL
+        ):
+            calls.append(("edit_file", {
+                "path": m.group(1),
+                "old_text": m.group(2).replace("''", "'"),
+                "new_text": m.group(3).replace("''", "'"),
+            }))
+
+        # Pattern 3: Write-LoomFile 'path' 'content'
+        for m in re.finditer(r"Write-LoomFile\s+'([^']+)'\s+'((?:[^']|'')*?)'", content, re.DOTALL):
+            calls.append(("write_file", {
+                "path": m.group(1),
+                "content": m.group(2).replace("''", "'"),
+            }))
+
+        # Pattern 4: Python-style calls — read_file("path")
+        for m in re.finditer(r'read_file\s*\(\s*["\']([^"\']+)["\']', content):
+            if not any(c[1].get("path") == m.group(1) for c in calls):
+                calls.append(("read_file", {"path": m.group(1)}))
+
+        # Pattern 5: edit_file(path="...", old_text="...", new_text="...")
+        for m in re.finditer(
+            r'edit_file\s*\([^)]*path\s*=\s*["\']([^"\']+)["\'][^)]*old_text\s*=\s*["\'](.+?)["\'][^)]*new_text\s*=\s*["\'](.+?)["\']',
+            content, re.DOTALL
+        ):
+            if not any(c[1].get("path") == m.group(1) and c[0] == "edit_file" for c in calls):
+                calls.append(("edit_file", {
+                    "path": m.group(1),
+                    "old_text": m.group(2),
+                    "new_text": m.group(3),
+                }))
+
+        # Pattern 6: Search-LoomCode 'pattern'
+        for m in re.finditer(r"Search-LoomCode\s+'([^']+)'", content):
+            calls.append(("search_code", {"pattern": m.group(1)}))
+
+        if calls:
+            logger.info("[Fallback] Extracted %d tool call(s) from text output", len(calls))
+
+        return calls
 
     async def _analysis_turn(self, messages: list[dict[str, Any]]) -> str:
         try:

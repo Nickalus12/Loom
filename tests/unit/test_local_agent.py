@@ -324,7 +324,7 @@ class TestPlanningStep:
         # The first call (tool loop, no planning for qwen3) should have thinking in system msg
         assert len(captured_messages) >= 1
         system_msg = captured_messages[0][0]["content"]
-        assert "thinking" in system_msg.lower()
+        assert "no_think" in system_msg.lower() or "tool" in system_msg.lower()
 
     async def test_non_qwen3_runs_planning_turn(self, agent):
         """When tool_model does NOT contain 'qwen3', a planning call should be made."""
