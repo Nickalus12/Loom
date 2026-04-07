@@ -1,9 +1,37 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to Loom will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Silk.1.2] - 2026-04-07
+
+### Fixed
+- Cloud agent pipeline now writes files from code blocks in responses
+- LiteLLM routing fixed — Azure DeepSeek-V3.2 and Cohere responding in ~1s
+- qwen3 thinking mode disabled — 30-90s savings per LLM call
+- Model kept hot in VRAM — eliminates 2-3s reload per call
+- Timeouts reduced from 120s to 30-45s for fast failure
+- Text-to-tool fallback when local models describe instead of calling tools
+- PSKit server.py _parse() now extracts JSON from PS output field
+- Memory engine graceful degradation — Neo4j/LiteLLM missing never crashes
+- start-swarm.py loads .env dynamically from multiple search paths
+
+### Added
+- PSKit MCP extracted as standalone package (github.com/Nickalus12/pskit)
+- 38 PSKit tools with structured output and tool annotations
+- KAN model trained — 24 features, [24,12,6,1] architecture, 89.7% accuracy
+- deploy and optimize plan types routing to devops_engineer and performance_engineer
+- pskit doctor, pskit audit CLI commands with Rich streaming output
+- CLAUDE.md comprehensive rewrite with full PSKit + Loom tool reference
+- PSKit-aware hooks — prompt guards on delete_file, git_push, run_command
+- Cloud coder file output format injected into orchestrator prompts
+
+### Performance
+- Azure cloud agents: ~1s response (DeepSeek-V3.2, Cohere via LiteLLM)
+- Local qwen3:4b: ~1.5s with thinking disabled (was 5-90s)
+- Full 5-phase cloud craft: ~15-30s (was 5-10 minutes)
 
 ## [1.5.0] - 2026-04-01
 

@@ -1,0 +1,118 @@
+{
+  "uptime_seconds": 20132.438,
+  "counters": {
+    "agent_tasks_total": 2.0,
+    "memory_searches": 2.0,
+    "agent_model_calls": 2.0,
+    "model_calls_total": 2.0,
+    "model_tokens_input": 8694.0,
+    "model_call_errors": 4.0,
+    "agent_tasks_failed": 2.0,
+    "orch_swarm_phases_planned": 12.0,
+    "orch_plans_started": 2.0,
+    "orch_agent_calls_total": 9.0,
+    "orch_tokens_input": 20600.0,
+    "orch_tokens_output": 66337.0,
+    "orch_phases_completed": 6.0,
+    "orch_files_created": 6.0,
+    "orch_files_modified": 5.0,
+    "orch_parallel_batches": 1.0,
+    "orch_agent_call_errors": 3.0,
+    "orch_plans_completed": 1.0
+  },
+  "labeled_counters": {
+    "agent_model_calls": {
+      "{\"model\": \"qwen3:4b\"}": 2.0
+    },
+    "model_calls_total": {
+      "{\"provider\": \"ollama\"}": 2.0
+    },
+    "model_call_errors": {
+      "{\"provider\": \"ollama\"}": 4.0
+    },
+    "orch_agent_calls_total": {
+      "{\"agent\": \"architect\", \"tier\": \"heavy\"}": 1.0,
+      "{\"agent\": \"security_engineer\", \"tier\": \"heavy\"}": 2.0,
+      "{\"agent\": \"tester\", \"tier\": \"light\"}": 3.0,
+      "{\"agent\": \"coder\", \"tier\": \"heavy\"}": 2.0,
+      "{\"agent\": \"code_reviewer\", \"tier\": \"light\"}": 1.0
+    },
+    "orch_agent_call_duration_seconds": {
+      "{\"agent\": \"architect\"}": 1.0,
+      "{\"agent\": \"security_engineer\"}": 1.0,
+      "{\"agent\": \"tester\"}": 2.0,
+      "{\"agent\": \"coder\"}": 1.0,
+      "{\"agent\": \"code_reviewer\"}": 1.0
+    },
+    "orch_tokens_input": {
+      "{\"agent\": \"architect\"}": 2608.0,
+      "{\"agent\": \"security_engineer\"}": 3723.0,
+      "{\"agent\": \"tester\"}": 7062.0,
+      "{\"agent\": \"coder\"}": 3841.0,
+      "{\"agent\": \"code_reviewer\"}": 3366.0
+    },
+    "orch_tokens_output": {
+      "{\"agent\": \"architect\"}": 6215.0,
+      "{\"agent\": \"security_engineer\"}": 5796.0,
+      "{\"agent\": \"tester\"}": 22876.0,
+      "{\"agent\": \"coder\"}": 19181.0,
+      "{\"agent\": \"code_reviewer\"}": 12269.0
+    },
+    "orch_phase_duration_seconds": {
+      "{\"agent\": \"architect\", \"phase\": \"Architecture Analysis\"}": 1.0,
+      "{\"agent\": \"security_engineer\", \"phase\": \"Security Audit\"}": 1.0,
+      "{\"agent\": \"tester\", \"phase\": \"Quality Audit\"}": 1.0,
+      "{\"agent\": \"coder\", \"phase\": \"Implementation\"}": 1.0,
+      "{\"agent\": \"code_reviewer\", \"phase\": \"Code Review\"}": 1.0,
+      "{\"agent\": \"tester\", \"phase\": \"Test Verification\"}": 1.0
+    },
+    "orch_phases_completed": {
+      "{\"agent\": \"architect\"}": 1.0,
+      "{\"agent\": \"security_engineer\"}": 1.0,
+      "{\"agent\": \"tester\"}": 2.0,
+      "{\"agent\": \"coder\"}": 1.0,
+      "{\"agent\": \"code_reviewer\"}": 1.0
+    },
+    "orch_agent_call_errors": {
+      "{\"agent\": \"security_engineer\"}": 1.0,
+      "{\"agent\": \"tester\"}": 1.0,
+      "{\"agent\": \"coder\"}": 1.0
+    }
+  },
+  "durations": {
+    "agent_duration_seconds": {
+      "count": 2,
+      "min": 19.0,
+      "max": 19.235,
+      "avg": 19.118,
+      "p95": 19.235,
+      "total": 38.235
+    },
+    "orch_agent_call_duration_seconds": {
+      "count": 6,
+      "min": 29.172,
+      "max": 177.687,
+      "avg": 69.172,
+      "p95": 177.687,
+      "total": 415.031
+    },
+    "orch_phase_duration_seconds": {
+      "count": 6,
+      "min": 29.172,
+      "max": 272.671,
+      "avg": 147.187,
+      "p95": 272.671,
+      "total": 883.124
+    },
+    "orch_plan_duration_seconds": {
+      "count": 1,
+      "min": 736.343,
+      "max": 736.343,
+      "avg": 736.343,
+      "p95": 736.343,
+      "total": 736.343
+    }
+  },
+  "waterfall": [],
+  "saved_at": "2026-04-07T04:06:11.536836+00:00"
+}

@@ -1,0 +1,163 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Read lines then same lines again",
+      "ts_ms": 0,
+      "duration_ms": 3,
+      "data": {
+        "model": "test-tool-model",
+        "max_turns": 5
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 0,
+      "duration_ms": 1,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "llm_call",
+      "name": "test-tool-model",
+      "ts_ms": 0,
+      "duration_ms": 1,
+      "data": {
+        "provider": "ollama",
+        "msgs": 3,
+        "input_chars": 2594
+      },
+      "parent": 1
+    },
+    {
+      "type": "llm_response",
+      "name": "test-tool-model",
+      "ts_ms": 1,
+      "duration_ms": null,
+      "data": {
+        "provider": "ollama",
+        "duration_ms": 0,
+        "input_tokens": "<MagicMock name='mock.usage.prompt_tokens' id='2581779446624'>",
+        "output_tokens": "<MagicMock name='mock.usage.completion_tokens' id='2581779446960'>",
+        "has_tools": true
+      },
+      "parent": 1
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file_lines",
+      "ts_ms": 1,
+      "duration_ms": 0,
+      "data": {
+        "args": {
+          "path": "big.py",
+          "start_line": 1,
+          "end_line": 2
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 1,
+      "duration_ms": 1,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    },
+    {
+      "type": "llm_call",
+      "name": "test-tool-model",
+      "ts_ms": 1,
+      "duration_ms": 1,
+      "data": {
+        "provider": "ollama",
+        "msgs": 5,
+        "input_chars": 2611
+      },
+      "parent": 5
+    },
+    {
+      "type": "llm_response",
+      "name": "test-tool-model",
+      "ts_ms": 2,
+      "duration_ms": null,
+      "data": {
+        "provider": "ollama",
+        "duration_ms": 0,
+        "input_tokens": "<MagicMock name='mock.usage.prompt_tokens' id='2581780939840'>",
+        "output_tokens": "<MagicMock name='mock.usage.completion_tokens' id='2581780940176'>",
+        "has_tools": true
+      },
+      "parent": 5
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file_lines",
+      "ts_ms": 2,
+      "duration_ms": 0,
+      "data": {
+        "args": {
+          "path": "big.py",
+          "start_line": 1,
+          "end_line": 2
+        }
+      },
+      "parent": 5
+    },
+    {
+      "type": "cache_hit",
+      "name": "read_file_lines",
+      "ts_ms": 2,
+      "duration_ms": null,
+      "data": {},
+      "parent": 5
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 3",
+      "ts_ms": 2,
+      "duration_ms": 1,
+      "data": {
+        "turn": 3
+      },
+      "parent": 0
+    },
+    {
+      "type": "llm_call",
+      "name": "test-tool-model",
+      "ts_ms": 2,
+      "duration_ms": 1,
+      "data": {
+        "provider": "ollama",
+        "msgs": 7,
+        "input_chars": 2628
+      },
+      "parent": 10
+    },
+    {
+      "type": "llm_response",
+      "name": "test-tool-model",
+      "ts_ms": 3,
+      "duration_ms": null,
+      "data": {
+        "provider": "ollama",
+        "duration_ms": 0,
+        "input_tokens": "<MagicMock name='mock.usage.prompt_tokens' id='2581780941856'>",
+        "output_tokens": "<MagicMock name='mock.usage.completion_tokens' id='2581780942192'>",
+        "has_tools": false
+      },
+      "parent": 10
+    }
+  ],
+  "total_events": 13,
+  "total_duration_ms": 4,
+  "saved_at": "2026-04-07T09:34:05.675287+00:00"
+}

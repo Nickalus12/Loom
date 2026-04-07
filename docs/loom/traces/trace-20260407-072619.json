@@ -1,0 +1,55 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "You are an autonomous engineering agent. Your job is to WRITE CODE, not just ana",
+      "ts_ms": 0,
+      "duration_ms": 116625,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 25
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 687,
+      "duration_ms": 44454,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "llm_call",
+      "name": "qwen3:4b",
+      "ts_ms": 687,
+      "duration_ms": 44454,
+      "data": {
+        "provider": "ollama",
+        "msgs": 2,
+        "input_chars": 3959
+      },
+      "parent": 1
+    },
+    {
+      "type": "llm_response",
+      "name": "qwen3:4b",
+      "ts_ms": 45141,
+      "duration_ms": null,
+      "data": {
+        "provider": "ollama",
+        "duration_ms": 44453,
+        "input_tokens": 1795,
+        "output_tokens": 3313,
+        "has_tools": false
+      },
+      "parent": 1
+    }
+  ],
+  "total_events": 4,
+  "total_duration_ms": 116625,
+  "saved_at": "2026-04-07T07:26:19.270060+00:00"
+}

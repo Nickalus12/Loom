@@ -1,0 +1,117 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Call read_file on D:\\Projects\\Loom\\README.md, then call edit_file to replace '78",
+      "ts_ms": 0,
+      "duration_ms": 247328,
+      "data": {
+        "model": "qwen3:4b",
+        "max_turns": 5
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 531,
+      "duration_ms": 118406,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "llm_call",
+      "name": "qwen3:4b",
+      "ts_ms": 531,
+      "duration_ms": 49515,
+      "data": {
+        "provider": "ollama",
+        "msgs": 2,
+        "input_chars": 3037
+      },
+      "parent": 1
+    },
+    {
+      "type": "llm_response",
+      "name": "qwen3:4b",
+      "ts_ms": 50046,
+      "duration_ms": null,
+      "data": {
+        "provider": "ollama",
+        "duration_ms": 49515,
+        "input_tokens": 1589,
+        "output_tokens": 3136,
+        "has_tools": true
+      },
+      "parent": 1
+    },
+    {
+      "type": "tool_call",
+      "name": "read_file",
+      "ts_ms": 50046,
+      "duration_ms": 32235,
+      "data": {
+        "args": {
+          "path": "D:\\Projects\\Loom\\README.md"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "tool_call",
+      "name": "edit_file",
+      "ts_ms": 82281,
+      "duration_ms": 36656,
+      "data": {
+        "args": {
+          "path": "D:\\Projects\\Loom\\README.md",
+          "old_text": "788 Tests",
+          "new_text": "788+ Tests"
+        }
+      },
+      "parent": 1
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 2",
+      "ts_ms": 118953,
+      "duration_ms": 69593,
+      "data": {
+        "turn": 2
+      },
+      "parent": 0
+    },
+    {
+      "type": "llm_call",
+      "name": "qwen3:4b",
+      "ts_ms": 118953,
+      "duration_ms": 69593,
+      "data": {
+        "provider": "ollama",
+        "msgs": 5,
+        "input_chars": 4305
+      },
+      "parent": 6
+    },
+    {
+      "type": "llm_response",
+      "name": "qwen3:4b",
+      "ts_ms": 188546,
+      "duration_ms": null,
+      "data": {
+        "provider": "ollama",
+        "duration_ms": 69593,
+        "input_tokens": 2002,
+        "output_tokens": 4516,
+        "has_tools": false
+      },
+      "parent": 6
+    }
+  ],
+  "total_events": 9,
+  "total_duration_ms": 247344,
+  "saved_at": "2026-04-07T07:35:16.126530+00:00"
+}

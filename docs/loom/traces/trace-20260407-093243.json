@@ -1,0 +1,55 @@
+{
+  "trace_version": 1,
+  "events": [
+    {
+      "type": "agent_start",
+      "name": "Do something",
+      "ts_ms": 0,
+      "duration_ms": 2,
+      "data": {
+        "model": "test-tool-model",
+        "max_turns": 5
+      },
+      "parent": null
+    },
+    {
+      "type": "turn_start",
+      "name": "Turn 1",
+      "ts_ms": 0,
+      "duration_ms": 1,
+      "data": {
+        "turn": 1
+      },
+      "parent": 0
+    },
+    {
+      "type": "llm_call",
+      "name": "test-tool-model",
+      "ts_ms": 0,
+      "duration_ms": 1,
+      "data": {
+        "provider": "ollama",
+        "msgs": 3,
+        "input_chars": 2574
+      },
+      "parent": 1
+    },
+    {
+      "type": "llm_response",
+      "name": "test-tool-model",
+      "ts_ms": 1,
+      "duration_ms": null,
+      "data": {
+        "provider": "ollama",
+        "duration_ms": 0,
+        "input_tokens": "<MagicMock name='mock.usage.prompt_tokens' id='2372272238816'>",
+        "output_tokens": "<MagicMock name='mock.usage.completion_tokens' id='2372272239152'>",
+        "has_tools": false
+      },
+      "parent": 1
+    }
+  ],
+  "total_events": 4,
+  "total_duration_ms": 2,
+  "saved_at": "2026-04-07T09:32:43.928649+00:00"
+}
