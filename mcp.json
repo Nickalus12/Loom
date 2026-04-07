@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "loom-swarm": {
-      "command": "uv",
-      "args": ["run", "--package", "loom", "python", "-m", "loom.server"]
+      "command": "python",
+      "args": ["scripts/start-swarm.py"],
+      "env": {
+        "PYTHONPATH": "src"
+      }
     }
   }
 }

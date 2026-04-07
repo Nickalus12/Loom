@@ -7,9 +7,11 @@
     },
     "loom-swarm": {
       "command": "python",
-      "args": ["-m", "loom.server"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/../scripts/start-swarm.py"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}/..",
       "env": {
-        "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/python"
+        "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}/../src",
+        "LOOM_PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}/.."
       }
     },
     "context7": {
